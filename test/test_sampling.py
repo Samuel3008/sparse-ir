@@ -4,6 +4,7 @@ import numpy as np
 
 import irbasis3
 from irbasis3 import sampling
+import pytest
 
 
 def test_decomp():
@@ -93,3 +94,64 @@ def test_wn_noise():
     Giw_n = Giw +  noise * np.linalg.norm(Giw) * rng.randn(*Giw.shape)
     Gl_n = smpl.fit(Giw_n)
     np.testing.assert_allclose(Gl, Gl_n, atol=12 * noise * Gl_magn, rtol=0)
+
+
+def _randn(*shape, dtype=np.float64):
+    if dtype == np.float64:
+        return np.random.randn(*shape)
+    elif dtype == np.complex128:
+        return np.random.randn(*shape) + 1J*np.random.randn(*shape)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_constrained_lstsq(dtype):
+    """
+    Comptue argmin_{x} (1/2) |a @ x - b|^2, 
+    subject to the linear equality contrain c @ x = d.
+    """
+    np.random.seed(100)
+    M, N = 2, 4
+    num_const = N - M
+    a = _randn(M, N, dtype=dtype)
+    b = _randn(M, dtype=dtype)
+    c = _randn(num_const, N, dtype=dtype)
+    d = _randn(num_const, dtype=dtype)
+
+    dmat = sampling.DecomposedMatrixContrainedFitting(a, c, d)
+    x = dmat.lstsq(b)
+
+    assert np.abs(a@x - b).max() < 1e-13
+    assert np.abs(c@x - d).max() < 1e-13
+
+def test_wn_known_moment():
+    lambda_ = 100
+    beta = 100
+    wmax = lambda_/beta
+
+    # 1/(iv - H) \simeq 1/iv + H/(iv)^2 + ...
+    H = np.array([[0.0, 0.1], [0.1, 0.2]])
+    #H = np.array([[0.1]])
+    nf = H.shape[0]
+    evals, _ = np.linalg.eigh(H)
+    assert all(np.abs(evals) < wmax)
+    known_moments = {
+        1: np.identity(nf),
+        #2: H
+    }
+
+    K = irbasis3.KernelFFlat(lambda_)
+    basis = irbasis3.FiniteTempBasis(K, 'F', beta)
+    smpl = irbasis3.MatsubaraSampling(basis, known_moments=known_moments)
+    #smpl = irbasis3.MatsubaraSampling(basis)
+
+    iv = np.einsum('w,ij->wij', 1J * smpl.sampling_points * np.pi/beta, np.identity(nf))
+    giv_smpl = np.linalg.inv(iv - H[None,:,:])
+    #giv_smpl = np.zeros((smpl.sampling_points.size, nf, nf), dtype=np.complex128)
+
+    #print("basis", basis.size)
+    #print("giv_smpl", giv_smpl.shape)
+    gl = smpl.fit(giv_smpl)
+
+    giv_reconst = smpl.evaluate(gl)
+
+    print(np.abs(giv_smpl - giv_reconst).max())
