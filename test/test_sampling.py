@@ -142,16 +142,11 @@ def test_wn_known_moment():
     K = irbasis3.KernelFFlat(lambda_)
     basis = irbasis3.FiniteTempBasis(K, 'F', beta)
     smpl = irbasis3.MatsubaraSampling(basis, known_moments=known_moments)
-    #smpl = irbasis3.MatsubaraSampling(basis)
 
     iv = np.einsum('w,ij->wij', 1J * smpl.sampling_points * np.pi/beta, np.identity(nf))
     giv_smpl = np.linalg.inv(iv - H[None,:,:])
-    #giv_smpl = np.zeros((smpl.sampling_points.size, nf, nf), dtype=np.complex128)
 
-    #print("basis", basis.size)
-    #print("giv_smpl", giv_smpl.shape)
     gl = smpl.fit(giv_smpl)
-
     giv_reconst = smpl.evaluate(gl)
 
     print(np.abs(giv_smpl - giv_reconst).max())

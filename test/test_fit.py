@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 import numpy as np
 
-import irbasis3
 from irbasis3 import _fit
 import pytest
 

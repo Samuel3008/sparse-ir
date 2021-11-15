@@ -3,7 +3,7 @@
 import numpy as np
 
 import irbasis3
-from irbasis3 import util
+from irbasis3 import high_freq
 import pytest
 
 
@@ -20,7 +20,7 @@ def test_high_freq_moments(statistics):
     eps = 1e-7
     basis = irbasis3.FiniteTempBasis(
         irbasis3.KernelFFlat(lambda_),
-        'F', beta, eps=eps
+        statistics, beta, eps=eps
     )
     nf = 2
 
@@ -32,11 +32,11 @@ def test_high_freq_moments(statistics):
     for m in range(num_moments):
         giv += high_freq_mom[m][None,:,:]/(1J*(np.pi/beta)*smpl.sampling_points[:,None,None])**(m+1)
     gl = smpl.fit(giv, axis=0)
-    high_freq_mom_reconst = util.high_freq_moment(gl, basis, num_moments=2, axis=0)
+    high_freq_mom_reconst = high_freq.high_freq_moment(gl, basis, num_moments=2, axis=0)
 
     high_freq_mom_reconst2 = []
     for m in range(num_moments):
-        ev = util.evalulator_high_freq_moment(basis, m+1)
+        ev = high_freq.evalulator_high_freq_moment(basis, m+1)
         high_freq_mom_reconst2.append(np.einsum('l,lij->ij', ev, gl))
 
     for m in range(num_moments):

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 import numpy as np
 from warnings import warn
-
+from .high_freq import evalulator_high_freq_moment
 
 class SamplingBase:
     """Base class for sparse sampling.
@@ -17,26 +17,45 @@ class SamplingBase:
             |  coefficients  |<----------------|  sampling points  |
             |________________|      fit        |___________________|
 
+    Optionally, in fitting, we can use known high-frequency moments as linear equality conditions:
+     G(iv) \simeq \sum_{n=1}^N G_n/(iv)^n, where
+           G_n = (-1)^n (G^{n-1}(tau=0^+) - G^{n-1}(tau=0^-)).
+
     Attributes:
     -----------
      - `basis` : IR Basis instance
      - `matrix` : Evaluation matrix is decomposed form
      - `sampling_points` : Set of sampling points
+     - `warn_cond` : Warn if the condition number is too large (>1e8)
+     - `known_moments` : Known high-frequency moments given as a dictionary.
+        For example, {1: G1, 2: G2}.
     """
-    def __init__(self, basis, sampling_points=None):
+    def __init__(self, basis, sampling_points=None, warn_cond=True, known_moments=None):
         if sampling_points is None:
             sampling_points = self.__class__.default_sampling_points(basis)
         else:
             sampling_points = np.array(sampling_points)
+        
 
         self.basis = basis
-        self.matrix = DecomposedMatrix(
-                        self.__class__.eval_matrix(basis, sampling_points))
         self.sampling_points = sampling_points
+
+        if known_moments is None:
+            self.matrix = DecomposedMatrix(self.__class__.eval_matrix(basis, sampling_points))
+        else:
+            assert isinstance(known_moments, dict)
+            c_ = []
+            d_ = []
+            for n, Gn in known_moments.items():
+                c_.append(evalulator_high_freq_moment(basis, n))
+                d_.append(Gn)
+            self.matrix = DecomposedMatrixContrainedFitting(
+                self.__class__.eval_matrix(basis, sampling_points),
+                np.vstack(c_), np.array(d_))
 
         # Check conditioning
         self.cond = self.matrix.s[0] / self.matrix.s[-1]
-        if self.cond > 1e8:
+        if warn_cond and self.cond > 1e8:
             warn("Sampling matrix is poorly conditioned (cond = %.2g)"
                  % self.cond, ConditioningWarning)
 
@@ -131,7 +150,43 @@ class MatsubaraSampling(SamplingBase):
         return self.sampling_points
 
 
-class DecomposedMatrix:
+class FittingMatrix:
+    """Fitting matrix in SVD decomposed form for fast and accurate fitting.
+    Stores a matrix `A` 
+    """
+    def __init__(self, a):
+        a = np.asarray(a)
+        if a.ndim != 2:
+            raise ValueError("a must be of matrix form")
+        self.a = a
+
+    def __matmul__(self, x):
+        """Matrix-matrix multiplication along the first axis"""
+        return np.einsum('ij,j...->i...', self.a, x, optimize=True)
+
+    def matmul(self, x, axis=None):
+        """Compute `A @ x` (optionally along specified axis of x)"""
+        if axis is None:
+            return self @ x
+
+        x = np.asarray(x)
+        target_axis = 0
+        x = np.moveaxis(x, axis, target_axis)
+        r = self @ x
+        return np.moveaxis(r, target_axis, axis)
+
+    def lstsq(self, x, axis=None):
+        """Return `y` such that `np.linalg.norm(A @ y - x)` is minimal"""
+        if axis is None:
+            return self._lstsq(x)
+
+        x = np.asarray(x)
+        target_axis = 0
+        x = np.moveaxis(x, axis, target_axis)
+        r = self._lstsq(x)
+        return np.moveaxis(r, target_axis, axis)
+
+class DecomposedMatrix(FittingMatrix):
     """Matrix in SVD decomposed form for fast and accurate fitting.
 
     Stores a matrix `A` together with its thin SVD form: `A == (u * s) @ vt`.
@@ -148,9 +203,7 @@ class DecomposedMatrix:
             return u, s, vH
 
     def __init__(self, a, svd_result=None):
-        a = np.asarray(a)
-        if a.ndim != 2:
-            raise ValueError("a must be of matrix form")
+        super().__init__(a)
         if svd_result is None:
             u, s, vt = self.__class__.get_svd_result(a)
         else:
@@ -161,9 +214,6 @@ class DecomposedMatrix:
         self.s = s
         self.vt = vt
 
-    def __matmul__(self, x):
-        """Matrix-matrix multiplication."""
-        return self.a @ x
 
     def matmul(self, x, axis=None):
         """Compute `A @ x` (optionally along specified axis of x)"""
@@ -171,31 +221,58 @@ class DecomposedMatrix:
             return self @ x
 
         x = np.asarray(x)
-        target_axis = max(x.ndim - 2, 0)
+        target_axis = 0
         x = np.moveaxis(x, axis, target_axis)
         r = self @ x
         return np.moveaxis(r, target_axis, axis)
 
     def _lstsq(self, x):
-        r = self.u.conj().T @ x
-        r = r / (self.s[:, None] if r.ndim > 1 else self.s)
-        return self.vt.conj().T @ r
-
-    def lstsq(self, x, axis=None):
-        """Return `y` such that `np.linalg.norm(A @ y - x)` is minimal"""
-        if axis is None:
-            return self._lstsq(x)
-
-        x = np.asarray(x)
-        target_axis = max(x.ndim - 2, 0)
-        x = np.moveaxis(x, axis, target_axis)
-        r = self._lstsq(x)
-        return np.moveaxis(r, target_axis, axis)
+        r = np.einsum('ij,j...->i...', self.u.conj().T, x, optimize=True)
+        r = np.einsum('i...,i->i...', r, 1/self.s)
+        return np.einsum('ij,j...->i...', self.vt.conj().T, r, optimize=True)
 
     def __array__(self, dtype=None):
         """Convert to numpy array."""
         return self.a.astype(dtype)
 
+
+class DecomposedMatrixContrainedFitting(FittingMatrix):
+    """ DecomposedMatrix with linear equality constraints
+
+    For computing argmin_{x} (1/2) |a @ x - b|^2, 
+    subject to the linear equality contrain c @ x = d.
+
+    Mathematically, the solution is given by
+      [ a^\dagger a   c^\dagger ] [x] = [a^dagger b]
+      [     c             0     ] [v]   [ d ].
+    
+    Because `a` is squared, the condition number of the extended coefficient matrix
+    may be worse than the unconstrained counterpart.
+    """
+    def __init__(self, a, c, d):
+        super().__init__(a)
+
+        assert c.ndim == 2
+        assert c.shape[1] == a.shape[1]
+        num_const = c.shape[0]
+        assert d.shape[0] == num_const
+        self._decomposed_matrix = DecomposedMatrix(
+            np.block([
+                [a.T.conjugate()@a,  c.T.conjugate()],
+                [c                ,  np.zeros((num_const, num_const))]
+            ])
+        )
+        self._d = d
+    
+    @property
+    def s(self):
+        return self._decomposed_matrix.s
+
+    def _lstsq(self, x):
+        """ Fit along the first axis """
+        at_x = np.einsum('ij,j...->i...',  self.a.T.conjugate(), x, optimize=True)
+        x_ = np.concatenate([at_x, self._d], axis=0)
+        return self._decomposed_matrix.lstsq(x_)[0:self.a.shape[1]]
 
 class ConditioningWarning(RuntimeWarning):
     pass
