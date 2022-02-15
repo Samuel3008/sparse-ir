@@ -34,7 +34,7 @@ class PiecewiseLegendrePoly:
 
         data = np.array(data)
         knots = np.array(knots)
-        polyorder, nsegments = data.shape[:2]
+        nsegments, polyorder = data.shape[-2:]
         if knots.shape != (nsegments+1,):
             raise ValueError("Invalid knots array")
         if not (knots[1:] >= knots[:-1]).all():
@@ -61,26 +61,20 @@ class PiecewiseLegendrePoly:
     def __getitem__(self, l):
         """Return part of a set of piecewise polynomials"""
         if isinstance(l, tuple):
-            new_data = self.data[(slice(None), slice(None), *l)]
-        else:
-            new_data = self.data[:,:,l]
+            l = l + (slice(None),) * 2
+        new_data = self.data[l]
         return self.__class__(new_data, self)
 
     def __call__(self, x):
         """Evaluate polynomial at position x"""
         i, xtilde = self._split(np.asarray(x))
-        data = self.data[:, i]
+        data = self.data[..., i, :]
 
         # Evaluate for all values of l.  x and data array must be
-        # broadcast'able against each other, so we append dimensions here
-        func_dims = self.data.ndim - 2
-        datashape = i.shape + (1,) * func_dims
-        res = np_legendre.legval(xtilde.reshape(datashape), data, tensor=False)
-        res *= self._norm[i.reshape(datashape)]
-
-        # Finally, exchange the x and vector dimensions
-        order = tuple(range(i.ndim, i.ndim + func_dims)) + tuple(range(i.ndim))
-        return res.transpose(*order)
+        # broadcast'able against each other, but this is the case here
+        res = np_legendre.legval(xtilde, data, tensor=False)
+        res *= self._norm[i]
+        return res
 
     def value(self, l, x):
         """Return value for l and x."""
@@ -89,7 +83,7 @@ class PiecewiseLegendrePoly:
 
         l, x = np.broadcast_arrays(l, x)
         i, xtilde = self._split(x)
-        data = self.data[:, i, l]
+        data = self.data[l, i, :]
 
         # This should now neatly broadcast against each other
         res = np_legendre.legval(xtilde, data, tensor=False)

@@ -215,9 +215,9 @@ class CentrosymmSVE:
         inv_sqrt2 = 1/np.sqrt(2, dtype=u_data.dtype)
         u_data *= inv_sqrt2
         v_data *= inv_sqrt2
-        poly_flip_x = ((-1)**np.arange(u_data.shape[2]))[None, None, :]
-        u_neg = u_data[:, ::-1, :] * poly_flip_x * signs
-        v_neg = v_data[:, ::-1, :] * poly_flip_x * signs
+        poly_flip_x = (-1)**np.arange(u_data.shape[2])
+        u_neg = u_data[:, ::-1, :] * poly_flip_x * signs[:, None, None]
+        v_neg = v_data[:, ::-1, :] * poly_flip_x * signs[:, None, None]
         u_data = np.concatenate([u_neg, u_data], axis=1)
         v_data = np.concatenate([v_neg, v_data], axis=1)
 
