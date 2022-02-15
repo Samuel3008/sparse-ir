@@ -122,13 +122,15 @@ class SamplingSVE:
         u_x = u / self._sqrtw_x[:,None]
         v_y = v / self._sqrtw_y[:,None]
 
-        u_x = u_x.reshape(self._segs_x.size - 1, self.n_gauss, s.size)
-        v_y = v_y.reshape(self._segs_y.size - 1, self.n_gauss, s.size)
+        # Indices: s = singular value, i = segment, x = collocation point
+        # (ix)s -> s(ix) -> six
+        u_x = u_x.T.reshape(s.size, self._segs_x.size - 1, self.n_gauss)
+        v_y = v_y.T.reshape(s.size, self._segs_y.size - 1, self.n_gauss)
 
+        # Transform last index
         cmat = gauss.legendre_collocation(self._rule)
-        # lx,ixs -> ils -> lis
-        u_data = (cmat @ u_x).transpose(1, 0, 2)
-        v_data = (cmat @ v_y).transpose(1, 0, 2)
+        u_data = u_x @ cmat.T
+        v_data = v_y @ cmat.T
 
         dsegs_x = self._segs_x[1:] - self._segs_x[:-1]
         dsegs_y = self._segs_y[1:] - self._segs_y[:-1]
@@ -193,9 +195,10 @@ class CentrosymmSVE:
         u_even, s_even, v_even = self.even.postprocess(u[0], s[0], v[0], dtype)
         u_odd, s_odd, v_odd = self.odd.postprocess(u[1], s[1], v[1], dtype)
 
-        # Merge two sets - data is [legendre, segment, l]
-        u_data = np.concatenate([u_even.data, u_odd.data], axis=2)
-        v_data = np.concatenate([v_even.data, v_odd.data], axis=2)
+        # Merge singular values/vectors for the two blocks
+        # Indices: s = singular value, i = segment, l = Legendre index
+        u_data = np.concatenate([u_even.data, u_odd.data], axis=0)
+        v_data = np.concatenate([v_even.data, v_odd.data], axis=0)
         s = np.concatenate([s_even, s_odd])
         signs = np.concatenate([np.ones(s_even.size), -np.ones(s_odd.size)])
 
@@ -203,8 +206,8 @@ class CentrosymmSVE:
         # this strictly speaking is not necessary as we know that the even/odd
         # functions intersperse.
         sort = s.argsort()[::-1]
-        u_data = u_data[:, :, sort]
-        v_data = v_data[:, :, sort]
+        u_data = u_data[sort, :, :]
+        v_data = v_data[sort, :, :]
         s = s[sort]
         signs = signs[sort]
 
@@ -212,7 +215,7 @@ class CentrosymmSVE:
         inv_sqrt2 = 1/np.sqrt(2, dtype=u_data.dtype)
         u_data *= inv_sqrt2
         v_data *= inv_sqrt2
-        poly_flip_x = ((-1)**np.arange(u_data.shape[0]))[:, None, None]
+        poly_flip_x = ((-1)**np.arange(u_data.shape[2]))[None, None, :]
         u_neg = u_data[:, ::-1, :] * poly_flip_x * signs
         v_neg = v_data[:, ::-1, :] * poly_flip_x * signs
         u_data = np.concatenate([u_neg, u_data], axis=1)
