@@ -71,8 +71,11 @@ class SparsePoleRepresentation:
         weight = np.asarray(weight, dtype=work_dtype)
 
         fit_mat = -s[:, None] * v * weight[None, :]
+        fit_mat2 = v * weight[None, :]
         self.svd_result_dd = xprec.linalg.svd(fit_mat)
+        self.svd_result_dd2 = xprec.linalg.svd(fit_mat2)
         self.matrix = DecomposedMatrix(np.asarray(fit_mat, dtype=np.float64))
+        self.matrix2 = DecomposedMatrix(np.asarray(fit_mat2, dtype=np.float64))
 
     @property
     def statistics(self):
@@ -109,9 +112,20 @@ class SparsePoleRepresentation:
         gl:
             Expansion coefficients in IR
         """
-        #return self.matrix.lstsq(gl, axis)
         u, s, vt = self.svd_result_dd
         r = u.T @ gl
+        r = r / (s[:, None] if r.ndim > 1 else s)
+        return np.asarray(vt.T @ r, dtype=np.float64)
+
+    def from_rhol(self, rhol: np.ndarray, axis=0) -> np.ndarray:
+        """
+        From IR to SPR
+
+        gl:
+            Expansion coefficients in IR
+        """
+        u, s, vt = self.svd_result_dd2
+        r = u.T @ rhol
         r = r / (s[:, None] if r.ndim > 1 else s)
         return np.asarray(vt.T @ r, dtype=np.float64)
 
@@ -133,22 +147,18 @@ class SparsePoleRepresentation:
         return self.basis.default_matsubara_sampling_points(mitigate= mitigate)
 
 
+#def expand_IR_in_SPR(spr):
+#    return spr.from_rhol(np.identity(spr.basis.size, dtype=ddouble))
+
 def expand_IR_in_SPR(spr):
     basis = spr._basis
-    beta = basis.beta
-    tau = np.hstack([0, basis.default_tau_sampling_points(), beta])
-    tau_mid = 0.5*(tau[:-1] + tau[1:])
-    tau = np.sort(np.hstack((tau, tau_mid)))
-    print("s", basis.s[-1]/basis.s[0])
+    tau = basis.default_tau_sampling_points()
 
     y = basis.u(tau).T
     A = spr.u(np.array(tau, dtype=ddouble)).T
-    print(basis.size, spr.size)
-    print("debugA", y.shape, A.shape)
     u, s, vt = xprec.linalg.svd(A)
     u = u[:, 0:s.size]
     vt = vt[0:s.size, :]
-    print("usv", u.shape, s.shape, vt.shape)
     r = u.T @ y
     r = r / (s[:, None] if r.ndim > 1 else s)
     return np.asarray(vt.T @ r, dtype=np.float64)

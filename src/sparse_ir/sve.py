@@ -209,7 +209,8 @@ class CentrosymmSVE:
         signs = signs[sort]
 
         # Extend to the negative side
-        inv_sqrt2 = 1/np.sqrt(2, dtype=u_data.dtype)
+        sqrt2 = np.sqrt(np.array(2, dtype=u_data.dtype))
+        inv_sqrt2 = 1/sqrt2
         u_data *= inv_sqrt2
         v_data *= inv_sqrt2
         poly_flip_x = ((-1)**np.arange(u_data.shape[0]))[:, None, None]
