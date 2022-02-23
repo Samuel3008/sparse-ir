@@ -1,5 +1,5 @@
 import sparse_ir
-from sparse_ir.spr import SparsePoleRepresentation
+from sparse_ir.spr import SparsePoleRepresentation, expand_IR_in_SPR
 from sparse_ir.sampling import MatsubaraSampling, TauSampling
 import numpy as np
 import pytest
@@ -53,7 +53,8 @@ def test_save_IR_basis(stat):
     spr = SparsePoleRepresentation(basis)
     shift = {"F": 1, "B": 0}[stat]
 
-    u_IR_in_spr = spr.from_IR(np.identity(basis.size))
+    #u_IR_in_spr = spr.from_IR(np.identity(basis.size))
+    u_IR_in_spr = expand_IR_in_SPR(spr)
 
     v = 2*np.array([10**p for p in np.arange(5)]) + shift
     iv = 1j * v * np.pi/beta

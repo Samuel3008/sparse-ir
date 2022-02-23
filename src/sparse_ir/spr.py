@@ -111,7 +111,6 @@ class SparsePoleRepresentation:
         """
         #return self.matrix.lstsq(gl, axis)
         u, s, vt = self.svd_result_dd
-        print("debug", s.dtype, u.dtype, vt.dtype)
         r = u.T @ gl
         r = r / (s[:, None] if r.ndim > 1 else s)
         return np.asarray(vt.T @ r, dtype=np.float64)
@@ -132,3 +131,24 @@ class SparsePoleRepresentation:
     def default_matsubara_sampling_points(self, *, mitigate=True):
         """Default sampling points on the imaginary frequency axis"""
         return self.basis.default_matsubara_sampling_points(mitigate= mitigate)
+
+
+def expand_IR_in_SPR(spr):
+    basis = spr._basis
+    beta = basis.beta
+    tau = np.hstack([0, basis.default_tau_sampling_points(), beta])
+    tau_mid = 0.5*(tau[:-1] + tau[1:])
+    tau = np.sort(np.hstack((tau, tau_mid)))
+    print("s", basis.s[-1]/basis.s[0])
+
+    y = basis.u(tau).T
+    A = spr.u(np.array(tau, dtype=ddouble)).T
+    print(basis.size, spr.size)
+    print("debugA", y.shape, A.shape)
+    u, s, vt = xprec.linalg.svd(A)
+    u = u[:, 0:s.size]
+    vt = vt[0:s.size, :]
+    print("usv", u.shape, s.shape, vt.shape)
+    r = u.T @ y
+    r = r / (s[:, None] if r.ndim > 1 else s)
+    return np.asarray(vt.T @ r, dtype=np.float64)
