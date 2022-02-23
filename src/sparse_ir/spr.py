@@ -6,7 +6,8 @@ from .sampling import DecomposedMatrix
 from .basis import FiniteTempBasis
 from typing import Optional
 
-
+import xprec
+from xprec import ddouble
 class MatsubaraPoleBasis:
     def __init__(self, beta: float, poles: np.ndarray):
         self._beta = beta
@@ -63,14 +64,15 @@ class SparsePoleRepresentation:
         # Fitting matrix from IR
         weight = \
             basis.kernel.weight_func(self.statistics)(self._y_sampling_points)
-        fit_mat = np.einsum(
-            'l,lp,p->lp',
-            -basis.s,
-            basis.v(self._poles),
-            weight,
-            optimize=True
-        )
-        self.matrix = DecomposedMatrix(fit_mat)
+        work_dtype = ddouble
+        #work_dtype = np.float64
+        s = np.asarray(basis.s, dtype=work_dtype)
+        v = np.asarray(basis.v(self._poles), dtype=work_dtype)
+        weight = np.asarray(weight, dtype=work_dtype)
+
+        fit_mat = -s[:, None] * v * weight[None, :]
+        self.svd_result_dd = xprec.linalg.svd(fit_mat)
+        self.matrix = DecomposedMatrix(np.asarray(fit_mat, dtype=np.float64))
 
     @property
     def statistics(self):
@@ -107,7 +109,12 @@ class SparsePoleRepresentation:
         gl:
             Expansion coefficients in IR
         """
-        return self.matrix.lstsq(gl, axis)
+        #return self.matrix.lstsq(gl, axis)
+        u, s, vt = self.svd_result_dd
+        print("debug", s.dtype, u.dtype, vt.dtype)
+        r = u.T @ gl
+        r = r / (s[:, None] if r.ndim > 1 else s)
+        return np.asarray(vt.T @ r, dtype=np.float64)
 
     def to_IR(self, g_spr: np.ndarray, axis=0) -> np.ndarray:
         """
