@@ -8,9 +8,14 @@ module sparse_ir
     end type
 
     type IR
-        integer::size
+        integer :: size, ntau, nfreq_f, nfreq_b
+        double precision :: lambda, eps
+        double precision, allocatable :: s(:), tau(:)
+        integer, allocatable :: freq_f(:), freq_b(:)
         complex(kind(0d0)), allocatable :: u(:, :)
-        complex(kind(0d0)), allocatable :: uhat(:, :)
+        complex(kind(0d0)), allocatable :: uhat_f(:, :), uhat_b(:, :)
+        type(DecomposedMatrix) :: u_dm
+        type(DecomposedMatrix) :: uhat_dm
     end type
 
     contains
@@ -42,8 +47,8 @@ module sparse_ir
         call zgesdd('S', m, n, a_copy, lda, s, u, ldu, vt, ldvt, work, lwork, rwork, iwork, info)
 
         if (info /= 0) then
-           write (*, *) 'Failure in ZGESDD. INFO =', info
-           stop
+            write (*, *) 'Failure in ZGESDD. INFO =', info
+            stop
         end if
 
         ! Count number of singular values
@@ -56,26 +61,101 @@ module sparse_ir
         end do
 
         allocate(dmat%a(m, n))
+        allocate(dmat%inv_s(ns))
         allocate(dmat%ut(ns, m))
         allocate(dmat%v(n, ns))
 
-        dmat%a(1:m, 1:n) = a(1:m, 1:n)
+        dmat%a = a
         dmat%inv_s(1:ns) = 1/s(1:ns)
         dmat%ut(1:ns, 1:m) = conjg(transpose(u(1:m, 1:ns)))
         dmat%v(1:n, 1:ns) = conjg(transpose(vt(1:ns, 1:n)))
 
-        deallocate(work, a_copy, s, u, vt, work, iwork)
+        deallocate(work, a_copy, s, u, vt, rwork, iwork)
     end function
-
 
     function read(unit) result(obj)
-        !character (len=*), intent (in) :: filename
         integer, intent (in) :: unit
+        integer :: version
+        character(len=100) :: tmp_str
+        type(IR) :: obj
 
-        type(IR)::obj
-        allocate(obj%u(obj%size, 10))
-        allocate(obj%uhat(obj%size, 10))
+        read(unit,*) tmp_str, version
+        if (version == 1) then
+            call read_v1(unit, obj)
+        else
+            write(*, *) "Invalid version number", version
+            stop
+        end if
+    end
 
-    end function
+
+    subroutine read_v1(unit, obj)
+        integer, intent (in) :: unit
+        type(IR), intent (inout) :: obj
+
+        character(len=100) :: tmp_str
+        integer :: i, l, t, n
+
+        read(unit,*) tmp_str, obj%lambda
+        read(unit,*) tmp_str, obj%eps
+
+        ! Singular values
+        read(unit,*)
+        read(unit,*) obj%size
+        allocate(obj%s(obj%size))
+        do i=1, obj%size
+            read(unit, *) obj%s(i)
+        end do
+
+        ! Sampling times
+        read(unit,*)
+        read(unit,*) obj%ntau
+        allocate(obj%tau(obj%ntau))
+        do i=1, obj%ntau
+            read(unit, *) obj%tau(i)
+        end do
+
+        ! Basis functions on sampling times
+        read(unit,*)
+        allocate(obj%u(obj%ntau, obj%size))
+        do l = 1, obj%size
+            do t = 1, obj%ntau
+                read(unit, *) obj%u(t, l)
+            end do
+        end do
+
+        ! Sampling frequencies (F)
+        read(unit,*)
+        read(unit,*) obj%nfreq_f
+        allocate(obj%freq_f(obj%nfreq_f))
+        do i=1, obj%nfreq_f
+            read(unit, *) obj%freq_f(i)
+        end do
+
+        read(unit,*)
+        allocate(obj%uhat_f(obj%nfreq_f, obj%size))
+        do l = 1, obj%size
+            do n = 1, obj%nfreq_f
+                read(unit, *) obj%uhat_f(n, l)
+            end do
+        end do
+
+        ! Sampling frequencies (B)
+        read(unit,*)
+        read(unit,*) obj%nfreq_b
+        allocate(obj%freq_b(obj%nfreq_b))
+        do i=1, obj%nfreq_b
+            read(unit, *) obj%freq_b(i)
+        end do
+
+        read(unit,*)
+        allocate(obj%uhat_b(obj%nfreq_b, obj%size))
+        do l = 1, obj%size
+            do n = 1, obj%nfreq_b
+                read(unit, *) obj%uhat_b(n, l)
+            end do
+        end do
+
+    end
 
 end module
