@@ -1,12 +1,14 @@
 module sparse_ir
     implicit none
 
+    ! Matrix decomposed in SVD for fitting
     type DecomposedMatrix
-        double precision, allocatable :: inv_s(:)
-        complex(kind(0d0)), allocatable :: a(:, :)
+        complex(kind(0d0)), allocatable :: a(:, :) ! Original matrix
+        double precision, allocatable :: inv_s(:) ! Inverse of singular values
         complex(kind(0d0)), allocatable :: ut(:, :), v(:, :)
     end type
 
+    ! Sampling points, basis functions
     type IR
         integer :: size, ntau, nfreq_f, nfreq_b
         double precision :: lambda, eps
@@ -14,8 +16,8 @@ module sparse_ir
         integer, allocatable :: freq_f(:), freq_b(:)
         complex(kind(0d0)), allocatable :: u(:, :)
         complex(kind(0d0)), allocatable :: uhat_f(:, :), uhat_b(:, :)
-        type(DecomposedMatrix) :: u_dm
-        type(DecomposedMatrix) :: uhat_dm
+        type(DecomposedMatrix) :: u_fit
+        type(DecomposedMatrix) :: uhat_fit_f, uhat_fit_b
     end type
 
     contains
@@ -51,7 +53,7 @@ module sparse_ir
             stop
         end if
 
-        ! Count number of singular values
+        ! Number of relevant singular values s(i)/s(1) >= eps
         ns = 0
         do i = 1, mn
             if (s(i)/s(1) < eps) then
@@ -73,6 +75,7 @@ module sparse_ir
         deallocate(work, a_copy, s, u, vt, rwork, iwork)
     end function
 
+    ! Read sampling points, basis functions
     function read(unit) result(obj)
         integer, intent (in) :: unit
         integer :: version
@@ -88,13 +91,14 @@ module sparse_ir
         end if
     end
 
-
+    ! Read sampling points, basis functions (version 1)
     subroutine read_v1(unit, obj)
         integer, intent (in) :: unit
         type(IR), intent (inout) :: obj
 
         character(len=100) :: tmp_str
         integer :: i, l, t, n
+        double precision, parameter :: rtol = 1e-20
 
         read(unit,*) tmp_str, obj%lambda
         read(unit,*) tmp_str, obj%eps
@@ -123,6 +127,7 @@ module sparse_ir
                 read(unit, *) obj%u(t, l)
             end do
         end do
+        obj%u_fit = decompose(obj%u, rtol)
 
         ! Sampling frequencies (F)
         read(unit,*)
@@ -139,6 +144,7 @@ module sparse_ir
                 read(unit, *) obj%uhat_f(n, l)
             end do
         end do
+        obj%uhat_fit_f = decompose(obj%uhat_f, rtol)
 
         ! Sampling frequencies (B)
         read(unit,*)
@@ -155,6 +161,7 @@ module sparse_ir
                 read(unit, *) obj%uhat_b(n, l)
             end do
         end do
+        obj%uhat_fit_b = decompose(obj%uhat_f, rtol)
 
     end
 
