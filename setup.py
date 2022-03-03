@@ -69,4 +69,9 @@ setup(
 
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
+    entry_points={
+        "console_scripts": [
+            "irdump = sparse_ir.dump:run",
+        ]
+    },
     )
