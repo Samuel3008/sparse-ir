@@ -34,8 +34,9 @@ def run():
 
         print(f"# sampling times", file=f)
         times = basis_f.default_tau_sampling_points()
-        for i, x in enumerate(times):
-            print(i, '{:.16e}'.format(x), file=f)
+        print(times.size, file=f)
+        for x in times:
+            print('{:.16e}'.format(x), file=f)
 
         print(f"# u", file=f)
         uval = basis_f.u(times)
@@ -47,8 +48,9 @@ def run():
             print(f"# sampling frequencies {stat}", file=f)
             basis = {"F": basis_f, "B": basis_b}[stat]
             freqs = basis.default_matsubara_sampling_points()
-            for i, x in enumerate(freqs):
-                print(i, x, file=f)
+            print(freqs.size, file=f)
+            for x in freqs:
+                print(x, file=f)
 
             print(f"# uhat {stat}", file=f)
             uhatval = basis.uhat(freqs)
