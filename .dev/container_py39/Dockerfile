@@ -20,6 +20,7 @@ RUN apt-get update && \
     cmake \
     pkg-config \
     gfortran \
+    lldb \
     openmpi-bin \
     libopenmpi-dev \
     sudo \

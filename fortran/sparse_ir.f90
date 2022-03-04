@@ -12,16 +12,45 @@ module sparse_ir
     ! Sampling points, basis functions
     type IR
         integer :: size, ntau, nfreq_f, nfreq_b
-        double precision :: lambda, eps
+        double precision :: beta, wmax, eps
         double precision, allocatable :: s(:), tau(:)
         integer, allocatable :: freq_f(:), freq_b(:)
-        complex(kind(0d0)), allocatable :: u(:, :)
-        complex(kind(0d0)), allocatable :: uhat_f(:, :), uhat_b(:, :)
-        type(DecomposedMatrix) :: u_fit
-        type(DecomposedMatrix) :: uhat_fit_f, uhat_fit_b
+        type(DecomposedMatrix) :: u
+        type(DecomposedMatrix) :: uhat_f, uhat_b
     end type
 
     contains
+
+    subroutine init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, eps_svd)
+        type(IR), intent(inout) :: obj
+        double precision, intent(in) :: beta, lambda, eps, s(:), tau(:), eps_svd
+        complex(kind(0d0)), intent(in) :: u(:,:), uhat_f(:, :), uhat_b(:, :)
+        integer, intent(in) :: freq_f(:), freq_b(:)
+
+        obj%size = size(s)
+        obj%ntau = size(tau)
+        obj%nfreq_f = size(freq_f)
+        obj%nfreq_b = size(freq_b)
+        obj%beta = beta
+        obj%wmax = lambda/beta
+        obj%eps = eps
+
+        allocate(obj%s(obj%size))
+        obj%s = sqrt(0.5*lambda) * s
+
+        allocate(obj%tau(obj%ntau))
+        obj%tau = tau
+
+        allocate(obj%freq_f(obj%nfreq_f))
+        obj%freq_f = freq_f
+
+        allocate(obj%freq_b(obj%nfreq_b))
+        obj%freq_b = freq_b
+
+        obj%u = decompose(sqrt(2/beta)*u, eps_svd)
+        obj%uhat_f = decompose(sqrt(0.5*lambda) * uhat_f, eps_svd)
+        obj%uhat_b = decompose(sqrt(0.5*lambda) * uhat_b, eps_svd)
+    end
 
     ! SVD of matrix a. Singular values smaller than esp * the largest one are dropped.
     function decompose(a, eps) result(dmat)
@@ -83,35 +112,35 @@ module sparse_ir
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        call fit_impl(arr, obj%uhat_fit_f, res)
+        call fit_impl(arr, obj%uhat_f, res)
     end
 
     subroutine fit_matsubara_b(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        call fit_impl(arr, obj%uhat_fit_b, res)
+        call fit_impl(arr, obj%uhat_b, res)
     end
 
     subroutine fit_tau(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        call fit_impl(arr, obj%u_fit, res)
+        call fit_impl(arr, obj%u, res)
     end
 
     subroutine evaluate_matsubara_f(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        res = matmul(arr, obj%uhat_fit_f%a)
+        res = matmul(arr, obj%uhat_f%a)
     end
 
     subroutine evaluate_matsubara_b(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        res = matmul(arr, obj%uhat_fit_b%a)
+        res = matmul(arr, obj%uhat_b%a)
     end
 
     ! Implementation of fit
@@ -124,29 +153,35 @@ module sparse_ir
 
         integer :: nb, m, n, ns, i, j
 
+        ! ut(ns, m)
+        ! v(n, ns)
         ! arr(nb, m)
         ! mat(m, n)
-        ! ut_arr(nb, ns)
+        ! ut_arr(ns, nb)
         ! res(nb, n)
         nb = size(arr, 1)
+        ns = mat%ns
         m = mat%m
         n = mat%n
+        allocate(ut_arr(nb, ns))
 
         if (size(res, 1) /= nb .or. size(res, 2) /= n) then
             write(*, *) 'Invalid size of output array'
             stop
         end if
 
-        allocate(ut_arr(nb, ns))
-
-        ut_arr = matmul(mat%ut, arr)
+        !ut(ns, m) * arr(nb, m) -> ut_arr(ns, nb)
+        ut_arr = 0.0
+        call zgemm("n", "t", ns, nb, m, 1.d0, mat%ut, ns, arr, nb, 0.d0, ut_arr, ns)
         do j = 1, ns
             do i = 1, nb
-                ut_arr(i, j) = ut_arr(i, j) * mat%inv_s(j)
+                ut_arr(j, i) = ut_arr(j, i) * mat%inv_s(j)
             end do
         end do
 
-        res = matmul(mat%v, ut_arr)
+        ! ut_arr(ns, nb) * v(n, ns) -> (nb, n)
+        res = 0.0
+        call zgemm("t", "t", nb, n, ns, 1.d0, ut_arr, ns, mat%v, n, 0.d0, res, nb)
 
         deallocate(ut_arr)
     end

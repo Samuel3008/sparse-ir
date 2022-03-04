@@ -5,8 +5,9 @@ module sparse_ir_io
     contains
 
     ! Read sampling points, basis functions
-    function read_ir(unit) result(obj)
+    function read_ir(unit, beta) result(obj)
         integer, intent (in) :: unit
+        double precision, intent (in) :: beta
 
         type(IR) :: obj
         integer :: version
@@ -14,7 +15,7 @@ module sparse_ir_io
 
         read(unit,*) tmp_str, version
         if (version == 1) then
-            call read_v1(unit, obj)
+            obj = read_v1(unit, beta)
         else
             write(*, *) "Invalid version number", version
             stop
@@ -23,88 +24,88 @@ module sparse_ir_io
 
 
     ! Read sampling points, basis functions (version 1)
-    subroutine read_v1(unit, obj)
+    function read_v1(unit, beta) result(obj)
         integer, intent (in) :: unit
-        type(IR), intent (inout) :: obj
+        double precision, intent (in) :: beta
+
+        type(IR) :: obj
 
         character(len=100) :: tmp_str
         integer :: i, l, t, n
         double precision :: rtmp, rtmp2
-        double precision, parameter :: rtol = 1e-20
 
-        read(unit,*) tmp_str, obj%lambda
-        read(unit,*) tmp_str, obj%eps
+        double precision :: lambda, eps
+        double precision, parameter :: rtol = 1e-20
+        integer :: size, ntau, nfreq_f, nfreq_b
+        double precision, allocatable :: s(:), tau(:)
+        integer, allocatable :: freq_f(:), freq_b(:)
+        complex(kind(0d0)), allocatable :: u(:, :)
+        complex(kind(0d0)), allocatable :: uhat_f(:, :), uhat_b(:, :)
+
+        read(unit,*) tmp_str, lambda
+        read(unit,*) tmp_str, eps
 
         ! Singular values
         read(unit,*)
-        read(unit,*) obj%size
-        !write(*, *) "size", obj%size
-        allocate(obj%s(obj%size))
-        do i=1, obj%size
-            read(unit, *) obj%s(i)
-            !write(*, *) i, obj%s(i)
+        read(unit,*) size
+        allocate(s(size))
+        do i=1, size
+            read(unit, *) s(i)
         end do
 
         ! Sampling times
         read(unit,*)
-        read(unit,*) obj%ntau
-        !write(*, *) "size", obj%ntau
-        allocate(obj%tau(obj%ntau))
-        do i=1, obj%ntau
-            read(unit, *) obj%tau(i)
-            !write(*, *) i, obj%tau(i)
+        read(unit,*) ntau
+        allocate(tau(ntau))
+        do i=1, ntau
+            read(unit, *) tau(i)
         end do
 
         ! Basis functions on sampling times
         read(unit,*)
-        allocate(obj%u(obj%ntau, obj%size))
-        do l = 1, obj%size
-            do t = 1, obj%ntau
+        allocate(u(ntau, size))
+        do l = 1, size
+            do t = 1, ntau
                 read(unit, *) rtmp
-                obj%u(t, l) = rtmp
-                !write(*, *) l, t, obj%u(t, l)
+                u(t, l) = rtmp
             end do
         end do
-        obj%u_fit = decompose(obj%u, rtol)
 
         ! Sampling frequencies (F)
         read(unit,*)
-        read(unit,*) obj%nfreq_f
-        allocate(obj%freq_f(obj%nfreq_f))
-        do i=1, obj%nfreq_f
-            read(unit, *) obj%freq_f(i)
-            !write(*, *) 'freq', i, obj%freq_f(i)
+        read(unit,*) nfreq_f
+        allocate(freq_f(nfreq_f))
+        do i=1, nfreq_f
+            read(unit, *) freq_f(i)
         end do
 
         read(unit,*)
-        allocate(obj%uhat_f(obj%nfreq_f, obj%size))
-        do l = 1, obj%size
-            do n = 1, obj%nfreq_f
+        allocate(uhat_f(nfreq_f, size))
+        do l = 1, size
+            do n = 1, nfreq_f
                 read(unit, *) rtmp, rtmp2
-                obj%uhat_f(n, l) = dcmplx(rtmp, rtmp2)
-                !write(*, *) l, n, obj%uhat_f(n, l)
+                uhat_f(n, l) = dcmplx(rtmp, rtmp2)
             end do
         end do
-        obj%uhat_fit_f = decompose(obj%uhat_f, rtol)
 
         ! Sampling frequencies (B)
         read(unit,*)
-        read(unit,*) obj%nfreq_b
-        allocate(obj%freq_b(obj%nfreq_b))
-        do i=1, obj%nfreq_b
-            read(unit, *) obj%freq_b(i)
+        read(unit,*) nfreq_b
+        allocate(freq_b(nfreq_b))
+        do i=1, nfreq_b
+            read(unit, *) freq_b(i)
         end do
 
         read(unit,*)
-        allocate(obj%uhat_b(obj%nfreq_b, obj%size))
-        do l = 1, obj%size
-            do n = 1, obj%nfreq_b
+        allocate(uhat_b(nfreq_b, size))
+        do l = 1, size
+            do n = 1, nfreq_b
                 read(unit, *) rtmp, rtmp2
-                obj%uhat_b(n, l) = dcmplx(rtmp, rtmp2)
+                uhat_b(n, l) = dcmplx(rtmp, rtmp2)
             end do
         end do
-        obj%uhat_fit_b = decompose(obj%uhat_f, rtol)
 
+        call init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, 1d-20)
     end
 
 end module
