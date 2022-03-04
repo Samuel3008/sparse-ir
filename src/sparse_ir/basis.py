@@ -6,6 +6,7 @@ from warnings import warn
 
 from . import kernel as _kernel
 from . import sve
+from typing import Union
 
 
 class IRBasis:
@@ -97,6 +98,7 @@ class IRBasis:
         self.sampling_points_v = np.hstack(
             (v.xmin, 0.5 * (roots_[0:-1] + roots_[1:]), v.xmax))
         self.statistics = statistics
+        self._weight_func = self.kernel.weight_func(statistics)
 
     def __getitem__(self, index):
         """Return basis functions/singular values for given index/indices.
@@ -147,6 +149,10 @@ class IRBasis:
     def default_matsubara_sampling_points(self, *, mitigate=True):
         """Default sampling points on the imaginary frequency axis"""
         return _default_matsubara_sampling_points(self.uhat, mitigate)
+
+    def weight(self, omega: Union[float, np.ndarray]):
+        """ Weight for spectral function """
+        return self._weight_func(omega)
 
 
 class FiniteTempBasis:
@@ -248,6 +254,8 @@ class FiniteTempBasis:
         _even_odd = {'F': 'odd', 'B': 'even'}[statistics]
         self.uhat = uhat_base.hat(_even_odd, conv_radius)
 
+        self._weight_func = self.kernel.weight_func(statistics)
+
     def __getitem__(self, index):
         """Return basis functions/singular values for given index/indices.
 
@@ -284,6 +292,10 @@ class FiniteTempBasis:
     def default_omega_sampling_points(self):
         """Default sampling points on the real frequency axis"""
         return _default_sampling_points(self.v)
+
+    def weight(self, omega: Union[float, np.ndarray]):
+        """ Weight for spectral function """
+        return self._weight_func(omega)
 
 
 def finite_temp_bases(

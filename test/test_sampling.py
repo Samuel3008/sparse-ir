@@ -5,6 +5,7 @@ import numpy as np
 import sparse_ir
 from sparse_ir import sampling
 from sparse_ir.basis import FiniteTempBasis
+import pytest
 
 def test_decomp():
     rng = np.random.RandomState(4711)
@@ -109,3 +110,29 @@ def test_boson_with_KFFlat():
     Giw_n = Giw +  noise * np.linalg.norm(Giw) * rng.randn(*Giw.shape)
     Gl_n = smpl.fit(Giw_n)
     np.testing.assert_allclose(Gl, Gl_n, atol=12 * noise * Gl_magn, rtol=0)
+
+
+@pytest.mark.parametrize("stat", ["F", "B"])
+def test_low_freq_pole_matsubara(stat):
+    """
+    G(iv) = 1/(iv - ω0),
+        where ω0 = 1/β.
+
+    G(τ=0) = - weight/(1+exp(-β ω0)),
+        where weight = 1 for fermion and weight=1/tanh(β ω0).
+    """
+    wmax = 1.0
+    beta = 1e+4
+    omega0 = 1/beta
+    eps = 1e-10
+    basis = sparse_ir.FiniteTempBasis(stat, beta, wmax, eps=eps)
+    smpl = sparse_ir.MatsubaraSampling(basis)
+    weight = basis.weight(omega0)
+
+    iv = 1j*smpl.sampling_points * np.pi/beta
+    Giw = 1/(iv - omega0)
+    Gl_n = smpl.fit(Giw)
+
+    smpl_tau0 = sparse_ir.TauSampling(basis, np.array([0]))
+
+    np.testing.assert_allclose(smpl_tau0.evaluate(Gl_n), -weight/(1+np.exp(-1)), rtol=0, atol=100*eps)
