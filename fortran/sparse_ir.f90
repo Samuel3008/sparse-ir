@@ -21,14 +21,14 @@ module sparse_ir
 
     contains
 
-    subroutine init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, eps_svd)
+    subroutine init_ir(obj, beta, lambda, eps, s, x, freq_f, freq_b, u, uhat_f, uhat_b, eps_svd)
         type(IR), intent(inout) :: obj
-        double precision, intent(in) :: beta, lambda, eps, s(:), tau(:), eps_svd
+        double precision, intent(in) :: beta, lambda, eps, s(:), x(:), eps_svd
         complex(kind(0d0)), intent(in) :: u(:,:), uhat_f(:, :), uhat_b(:, :)
         integer, intent(in) :: freq_f(:), freq_b(:)
 
         obj%size = size(s)
-        obj%ntau = size(tau)
+        obj%ntau = size(x)
         obj%nfreq_f = size(freq_f)
         obj%nfreq_b = size(freq_b)
         obj%beta = beta
@@ -39,7 +39,7 @@ module sparse_ir
         obj%s = sqrt(0.5*lambda) * s
 
         allocate(obj%tau(obj%ntau))
-        obj%tau = tau
+        obj%tau = 0.5 * beta * (x + 1.d0)
 
         allocate(obj%freq_f(obj%nfreq_f))
         obj%freq_f = freq_f
@@ -48,8 +48,8 @@ module sparse_ir
         obj%freq_b = freq_b
 
         obj%u = decompose(sqrt(2/beta)*u, eps_svd)
-        obj%uhat_f = decompose(sqrt(0.5*lambda) * uhat_f, eps_svd)
-        obj%uhat_b = decompose(sqrt(0.5*lambda) * uhat_b, eps_svd)
+        obj%uhat_f = decompose(sqrt(beta) * uhat_f, eps_svd)
+        obj%uhat_b = decompose(sqrt(beta) * uhat_b, eps_svd)
     end
 
     ! SVD of matrix a. Singular values smaller than esp * the largest one are dropped.
@@ -79,8 +79,7 @@ module sparse_ir
         call zgesdd('S', m, n, a_copy, lda, s, u, ldu, vt, ldvt, work, lwork, rwork, iwork, info)
 
         if (info /= 0) then
-            write (*, *) 'Failure in ZGESDD. INFO =', info
-            stop
+            stop 'Failure in ZGESDD.'
         end if
 
         ! Number of relevant singular values s(i)/s(1) >= eps
@@ -166,8 +165,7 @@ module sparse_ir
         allocate(ut_arr(nb, ns))
 
         if (size(res, 1) /= nb .or. size(res, 2) /= n) then
-            write(*, *) 'Invalid size of output array'
-            stop
+            stop 'Invalid size of output array'
         end if
 
         !ut(ns, m) * arr(nb, m) -> ut_arr(ns, nb)

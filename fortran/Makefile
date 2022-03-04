@@ -17,3 +17,6 @@ $(TARGET): $(OBJS)
 	$(LINK.f) $^ $(LDLIBS) $(LDFLAGS) -o $@
 
 test_sparse_ir.o: sparse_ir.mod sparse_ir_io.mod
+
+test: $(TARGET)
+	./test_sparse_ir

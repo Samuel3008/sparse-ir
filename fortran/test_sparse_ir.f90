@@ -3,7 +3,8 @@ program main
     use sparse_ir_io
     implicit none
 
-    call test_matsubara_f()
+    call test_fermion()
+    call test_boson()
     call test_fit()
     call test_fit_rectangular()
 
@@ -26,7 +27,7 @@ program main
 
         y_reconst = transpose(matmul(dm%a, transpose(x)))
         if (maxval(abs(y - y_reconst)) > 1e-12) then
-            stop
+            stop "y and y_reconst do not match!"
         end if
         !write(*, *) y
         !write(*, *) y_reconst
@@ -47,50 +48,119 @@ program main
 
         y_reconst = transpose(matmul(dm%a, transpose(x)))
         if (maxval(abs(y - y_reconst)) > 1e-12) then
-            stop
+            stop "y and y_reconst do not match!"
         end if
     end
 
-    subroutine test_matsubara_f()
+    ! fermion
+    subroutine test_fermion()
         type(IR) :: ir_obj
         double precision, parameter :: lambda = 1d+4
         integer, parameter :: ndigit = 10
         double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
 
-        double precision :: beta, omega0
+        double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
+        double precision, parameter :: eps = 1.d0/10.d0**ndigit
 
-        complex(kind(0d0)),allocatable :: giv(:,:), gl(:, :)
-        integer l, n
-
-        beta = lambda/wmax
-        omega0 = 1/beta
+        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :)
+        integer n, t
 
         open(99, file='ir_nlambda4_ndigit10.dat', status='old')
         ir_obj = read_ir(99, beta)
         close(99)
 
         if (abs(ir_obj%beta - beta) > 1d-10) then
-            stop
+            stop "beta does not match"
         end if
         if (abs(ir_obj%wmax - wmax) > 1d-10) then
-            stop
+            stop "wmax does not match"
         end if
 
-        !G(iv) = 1/(iv - ω0),
-        !    where ω0 = 1/β.
-        !G(τ=0) = - 1/(1+exp(-β ω0)),
-        allocate(giv(1, ir_obj%nfreq_f), gl(1, ir_obj%size))
+        ! With ω0 = 1/β,
+        !   G(iv) = 1/(iv - ω0),
+        !   G(τ=0) = - exp(-τ ω0)/(1+exp(-β ω0)),
+        allocate(giv(1, ir_obj%nfreq_f))
+        allocate(gtau(1, ir_obj%ntau))
+        allocate(gl_ref(1, ir_obj%size))
+        allocate(gl_matsu(1, ir_obj%size))
+        allocate(gl_tau(1, ir_obj%size))
+
+        ! From Matsubara
         do n = 1, ir_obj%nfreq_f
             giv(1, n) = 1/(dcmplx(0d0, PI*ir_obj%freq_f(n)/beta) - omega0)
         end do
-        call fit_matsubara_f(ir_obj, giv, gl)
+        call fit_matsubara_f(ir_obj, giv, gl_matsu)
 
-        do l = 1, ir_obj%size
-            write(*, *) l, real(gl(1, l)), aimag(gl(1,l))
-            !write(*, *) l, ir_obj%s(l)
+        ! From tau
+        !   G(τ=0) = - exp(-τ ω0)/(1+exp(-β ω0)),
+        do t = 1, ir_obj%ntau
+            gtau(1, t) = - exp(-ir_obj%tau(t) * omega0)/(1.d0 + exp(-beta * omega0))
         end do
- 
-        deallocate(giv)
+        call fit_tau(ir_obj, gtau, gl_tau)
+
+        if (maxval(abs(gl_matsu - gl_tau)) > 100*eps) then
+            stop "gl_matsu and gl_tau do not match!"
+        end if
+
+        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau)
+    end
+
+
+    ! fermion
+    subroutine test_boson()
+        type(IR) :: ir_obj
+        double precision, parameter :: lambda = 1d+4
+        integer, parameter :: ndigit = 10
+        double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
+
+        double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
+        double precision, parameter :: eps = 1.d0/10.d0**ndigit
+
+        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :)
+        integer n, t, l
+
+        open(99, file='ir_nlambda4_ndigit10.dat', status='old')
+        ir_obj = read_ir(99, beta)
+        close(99)
+
+        if (abs(ir_obj%beta - beta) > 1d-10) then
+            stop "beta does not match"
+        end if
+        if (abs(ir_obj%wmax - wmax) > 1d-10) then
+            stop "wmax does not match"
+        end if
+
+        ! With ω0 = 1/β,
+        !   G(iv) = 1/(iv - ω0),
+        !   G(τ=0) = - exp(-τ ω0)/(1-exp(-β ω0)),
+        allocate(giv(1, ir_obj%nfreq_b))
+        allocate(gtau(1, ir_obj%ntau))
+        allocate(gl_ref(1, ir_obj%size))
+        allocate(gl_matsu(1, ir_obj%size))
+        allocate(gl_tau(1, ir_obj%size))
+
+        ! From Matsubara
+        do n = 1, ir_obj%nfreq_b
+            giv(1, n) = 1/(dcmplx(0d0, PI*ir_obj%freq_b(n)/beta) - omega0)
+        end do
+        call fit_matsubara_b(ir_obj, giv, gl_matsu)
+
+        ! From tau
+        !   G(τ=0) = - exp(-τ ω0)/(1-exp(-β ω0)),
+        do t = 1, ir_obj%ntau
+            gtau(1, t) = - exp(-ir_obj%tau(t) * omega0)/(1.d0 - exp(-beta * omega0))
+        end do
+        call fit_tau(ir_obj, gtau, gl_tau)
+
+        !do l = 1, ir_obj%size
+            !write(*, *) l, real(gl_tau(1, l)), real(gl_matsu(1, l))
+        !end do
+
+        if (maxval(abs(gl_matsu - gl_tau)) > 100*eps) then
+            stop "gl_matsu and gl_tau do not match!"
+        end if
+
+        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau)
     end
 
 end program
