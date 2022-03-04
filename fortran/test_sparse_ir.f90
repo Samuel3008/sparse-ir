@@ -7,7 +7,7 @@ program main
     double precision, parameter :: wmax = 1.d0
 
     open(99, file='ir.dat', status='old')
-    ir_obj = read_ir(99)
+    ir_obj = read_ir(99, beta)
     close(99)
 
 end program
