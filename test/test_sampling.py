@@ -135,4 +135,34 @@ def test_low_freq_pole_matsubara(stat):
 
     smpl_tau0 = sparse_ir.TauSampling(basis, np.array([0]))
 
-    np.testing.assert_allclose(smpl_tau0.evaluate(Gl_n), -weight/(1+np.exp(-1)), rtol=0, atol=100*eps)
+    np.testing.assert_allclose(smpl_tau0.evaluate(Gl_n), -weight/(1+np.exp(-beta*omega0)), rtol=0, atol=100*eps)
+
+
+@pytest.mark.parametrize("stat", ["F", "B"])
+def test_low_freq_pole_tau(stat):
+    """
+    G(iv) = 1/(iv - ω0),
+        where ω0 = 1/β.
+
+    ρ_l = ∫ dω V_l(ω) δ(ω-ω0) * weight(ω) = V_l(ω0) * weight(ω0),
+    G_l = - s_l * ρ_l,
+    G(τ)  = ∑_l U_l(τ) G_l
+          = - weight exp(-τ ω0)/(1+exp(-β ω0)).
+
+    The weight is for fermion and weight=1/tanh(β ω).
+    """
+    wmax = 1.0
+    beta = 1e+4
+    omega0 = 1/beta
+    eps = 1e-10
+    basis = sparse_ir.FiniteTempBasis(stat, beta, wmax, eps=eps)
+    weight = basis.weight(omega0)
+
+    rho_l = basis.v(omega0) * weight
+    g_l = - basis.s * rho_l
+
+    smpl = sparse_ir.TauSampling(basis)
+    g_tau = smpl.evaluate(g_l)
+    g_l_reconst = smpl.fit(g_tau)
+
+    np.testing.assert_allclose(g_l, g_l_reconst, rtol=0, atol=100*eps)
