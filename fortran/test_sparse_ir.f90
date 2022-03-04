@@ -62,7 +62,8 @@ program main
         double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
         double precision, parameter :: eps = 1.d0/10.d0**ndigit
 
-        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :)
+        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
+            gtau_reconst(:, :), giv_reconst(:, :)
         integer n, t
 
         open(99, file='ir_nlambda4_ndigit10.dat', status='old')
@@ -84,6 +85,8 @@ program main
         allocate(gl_ref(1, ir_obj%size))
         allocate(gl_matsu(1, ir_obj%size))
         allocate(gl_tau(1, ir_obj%size))
+        allocate(gtau_reconst(1, ir_obj%ntau))
+        allocate(giv_reconst(1, ir_obj%nfreq_f))
 
         ! From Matsubara
         do n = 1, ir_obj%nfreq_f
@@ -102,7 +105,17 @@ program main
             stop "gl_matsu and gl_tau do not match!"
         end if
 
-        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau)
+        call evaluate_matsubara_f(ir_obj, gl_matsu, giv_reconst)
+        if (maxval(abs(giv - giv_reconst)) > 100*eps) then
+            stop "giv do not match!"
+        end if
+
+        call evaluate_tau(ir_obj, gl_tau, gtau_reconst)
+        if (maxval(abs(gtau - gtau_reconst)) > 100*eps) then
+            stop "gtau do not match!"
+        end if
+
+        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau, gtau_reconst, giv_reconst)
     end
 
 
@@ -116,7 +129,8 @@ program main
         double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
         double precision, parameter :: eps = 1.d0/10.d0**ndigit
 
-        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :)
+        complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
+            gtau_reconst(:, :), giv_reconst(:, :)
         integer n, t
 
         open(99, file='ir_nlambda4_ndigit10.dat', status='old')
@@ -138,6 +152,8 @@ program main
         allocate(gl_ref(1, ir_obj%size))
         allocate(gl_matsu(1, ir_obj%size))
         allocate(gl_tau(1, ir_obj%size))
+        allocate(gtau_reconst(1, ir_obj%ntau))
+        allocate(giv_reconst(1, ir_obj%nfreq_b))
 
         ! From Matsubara
         do n = 1, ir_obj%nfreq_b
@@ -160,7 +176,17 @@ program main
             stop "gl_matsu and gl_tau do not match!"
         end if
 
-        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau)
+        call evaluate_matsubara_b(ir_obj, gl_matsu, giv_reconst)
+        if (maxval(abs(giv - giv_reconst)) > 100*eps) then
+            stop "gtau do not match!"
+        end if
+
+        call evaluate_tau(ir_obj, gl_tau, gtau_reconst)
+        if (maxval(abs(gtau - gtau_reconst)) > 100*eps) then
+            stop "gtau do not match!"
+        end if
+
+        deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau, gtau_reconst, giv_reconst)
     end
 
 end program

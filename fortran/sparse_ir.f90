@@ -128,18 +128,28 @@ module sparse_ir
         call fit_impl(arr, obj%u, res)
     end
 
+    subroutine evaluate_tau(obj, arr, res)
+        type(IR), intent(in) :: obj
+        complex(kind(0d0)), intent (in) :: arr(:, :)
+        complex(kind(0d0)), intent(out) :: res(:, :)
+        ! TODO: using zgemm
+        res = matmul(obj%u%a, transpose(arr))
+    end
+
     subroutine evaluate_matsubara_f(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        res = matmul(arr, obj%uhat_f%a)
+        ! TODO: using zgemm
+        res = matmul(obj%uhat_f%a, transpose(arr))
     end
 
     subroutine evaluate_matsubara_b(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
-        res = matmul(arr, obj%uhat_b%a)
+        ! TODO: using zgemm
+        res = matmul(obj%uhat_b%a, transpose(arr))
     end
 
     ! Implementation of fit
