@@ -10,7 +10,10 @@ RUN apt-get update && \
     git \
     zip \
     vim \
-    cmake pkg-config gfortran \
+    cmake \
+    pkg-config \
+    gfortran \
+    sudo \
     && \
     apt-get clean && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* # clean up
 
@@ -19,7 +22,8 @@ ARG NB_USER=vscode
 ARG NB_UID=1000
 ARG WORK_DIR=/home/${NB_USER}/work
 RUN useradd -u $NB_UID -m $NB_USER -s /bin/bash && \
-    echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    echo 'Defaults secure_path = /usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/conda/condabin' >> /etc/sudoers
 USER $NB_USER
 
 RUN mkdir /home/${NB_USER}/work

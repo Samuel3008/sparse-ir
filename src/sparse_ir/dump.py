@@ -24,13 +24,13 @@ def run():
 
     # For the logistic kernel, the fermionic and bosonic basis functions are equivalent.
     with open(args.output, "w") as f:
-        print(f"# version: 1", file=f)
-        print(f"# lambda: {lambda_}", file=f)
-        print(f"# eps: {eps}", file=f)
+        print(f"#version 1", file=f)
+        print(f"#lambda {lambda_}", file=f)
+        print(f"#eps {eps}", file=f)
+        print(f"#singular_values", file=f)
         print(basis_f.size, file=f)
-        print(f"# singular values", file=f)
-        for l, s in enumerate(basis_f.s):
-            print(l, '{:.16e}'.format(s), file=f)
+        for s in basis_f.s:
+            print('{:.16e}'.format(s), file=f)
 
         print(f"# sampling times", file=f)
         times = basis_f.default_tau_sampling_points()
