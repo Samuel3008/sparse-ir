@@ -106,7 +106,7 @@ program main
     end
 
 
-    ! fermion
+    ! boson
     subroutine test_boson()
         type(IR) :: ir_obj
         double precision, parameter :: lambda = 1d+4
@@ -117,7 +117,7 @@ program main
         double precision, parameter :: eps = 1.d0/10.d0**ndigit
 
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :)
-        integer n, t, l
+        integer n, t
 
         open(99, file='ir_nlambda4_ndigit10.dat', status='old')
         ir_obj = read_ir(99, beta)
