@@ -3,8 +3,8 @@ name: Build/test suite
 on:
   push:
     branches:
-      mainline
-      fortran
+      - mainline
+      - fortran
   pull_request:
     branches:
       mainline
