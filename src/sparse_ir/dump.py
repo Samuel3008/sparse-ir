@@ -6,9 +6,12 @@ def run():
         prog='irdump',
         description='Dump sampling points of IR',
     )
-    parser.add_argument('lambda_', action='store', default=None, type=float, help='beta * wmax')
-    parser.add_argument('eps', action='store', default=None, type=float, help='eps')
-    parser.add_argument('output', action='store', default=None, type=str, help='output filename')
+    parser.add_argument('lambda_', action='store', default=None,
+                        type=float, help='beta * wmax')
+    parser.add_argument('eps', action='store', default=None,
+                        type=float, help='eps')
+    parser.add_argument('output', action='store', default=None,
+                        type=str, help='output filename')
     args = parser.parse_args()
 
     print(args.lambda_)
@@ -56,7 +59,8 @@ def run():
             uhatval = basis.uhat(freqs)
             for l in range(basis.size):
                 for i in range(freqs.size):
-                    print('{:.16e} {:.16e}'.format(uhatval[l, i].real, uhatval[l, i].imag), file=f)
+                    print('{:.16e} {:.16e}'.
+                        format(uhatval[l, i].real, uhatval[l, i].imag), file=f)
 
 if __name__ == '__main__':
     run()
