@@ -68,7 +68,8 @@ f"""
         complex(kind(0d0)), allocatable :: u(:, :), uhat_f(:, :), uhat_b(:, :)
         double precision, allocatable :: u_reduced(:, :), uhat_f_reduced(:, :), uhat_b_reduced(:, :)
         integer, allocatable :: freq_f(:,:), freq_b(:,:)
-        integer, parameter :: size = {size}, ntau = {ntau}, nfreq_f = {nfreq_f}, nfreq_b = {nfreq_b}, nlambda = {nlambda}, ndigit = {ndigit}, ntau_reduced = ntau/2+1
+        integer, parameter :: size = {size}, ntau = {ntau}, nfreq_f = {nfreq_f}, nfreq_b = {nfreq_b}, nlambda = {nlambda}, ndigit = {ndigit}
+        integer, parameter :: ntau_reduced = ntau/2+1, nfreq_f_reduced = nfreq_f/2+1, nfreq_b_reduced = nfreq_b/2+1
         double precision, parameter :: lambda = 10.d0 ** nlambda, eps = 1/10.d0**ndigit
 
         integer :: itau, l, ifreq
@@ -81,8 +82,8 @@ f"""
         allocate(freq_b(nfreq_b, 1))
 
         allocate(u_reduced(ntau_reduced, size))
-        allocate(uhat_f_reduced(nfreq_f, size))
-        allocate(uhat_b_reduced(nfreq_b, size))
+        allocate(uhat_f_reduced(nfreq_f_reduced, size))
+        allocate(uhat_b_reduced(nfreq_b_reduced, size))
 
         s = generator_s_nlambda{nlambda}_ndigit{ndigit}()
         tau = generator_tau_nlambda{nlambda}_ndigit{ndigit}()
@@ -102,31 +103,42 @@ f"""
 
         ! Use the fact U^F_l(iv) is pure imaginary/real for even/odd l-1.
         do l = 1, size, 2
-            do ifreq = 1, nfreq_f
+            do ifreq = 1, nfreq_f_reduced
                 uhat_f(ifreq, l) = dcmplx(0.0, uhat_f_reduced(ifreq, l))
             end do
         end do
         do l = 2, size, 2
-            do ifreq = 1, nfreq_f
+            do ifreq = 1, nfreq_f_reduced
                 uhat_f(ifreq, l) = dcmplx(uhat_f_reduced(ifreq, l), 0.0)
             end do
         end do
+        do l = 1, size
+            do ifreq = 1, nfreq_f
+                uhat_f(nfreq_f-ifreq+1, l) = conjg(uhat_f(ifreq, l))
+            end do
+        end do
 
-        ! Use the fact U^B_l(iv) is pure real/imaginary for even/odd l-1.
+        ! Use the fact U^B_l(iv) is pure real/imaginary for even/odd l-1
         do l = 1, size, 2
-            do ifreq = 1, nfreq_b
+            do ifreq = 1, nfreq_b_reduced
                 uhat_b(ifreq, l) = dcmplx(uhat_b_reduced(ifreq, l), 0.0d0)
             end do
         end do
         do l = 2, size, 2
-            do ifreq = 1, nfreq_b
+            do ifreq = 1, nfreq_b_reduced
                 uhat_b(ifreq, l) = dcmplx(0.0d0, uhat_b_reduced(ifreq, l))
+            end do
+        end do
+        do l = 1, size
+            do ifreq = 1, nfreq_b
+                uhat_b(nfreq_b-ifreq+1, l) = conjg(uhat_b(ifreq, l))
             end do
         end do
 
         call init_ir(obj, beta, lambda, eps, s(:,1), tau(:,1), freq_f(:,1), freq_b(:,1), u, uhat_f, uhat_b, 1d-20)
 
         deallocate(s, u, uhat_f, uhat_b, freq_f, freq_b)
+        deallocate(u_reduced, uhat_f_reduced, uhat_b_reduced)
     end
 """
     )
@@ -155,8 +167,8 @@ f"""
     )
     print(8*" " + f"integer, parameter :: n={n}, m={m}")
     print(8*" " + f"allocate(obj({n}, {m}))")
-    for i in range(n):
-        for j in range(m):
+    for j in range(m):
+        for i in range(n):
             print(8*" " + f"obj({i+1},{j+1}) = {matrix[i,j]:.16e}".replace('e', 'd'))
     print(
 f"""
@@ -175,8 +187,8 @@ f"""
     )
     print(8*" " + f"integer, parameter :: n={n}, m={m}")
     print(8*" " + f"allocate(obj({n}, {m}))")
-    for i in range(n):
-        for j in range(m):
+    for j in range(m):
+        for i in range(n):
             print(8*" " + f"obj({i+1},{j+1}) = {matrix[i,j]}")
     print(
 f"""
