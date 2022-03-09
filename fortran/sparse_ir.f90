@@ -133,7 +133,7 @@ module sparse_ir
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
-        res = matmul(obj%u%a, transpose(arr))
+        res = matmul(arr, transpose(obj%u%a))
     end
 
     subroutine evaluate_matsubara_f(obj, arr, res)
@@ -141,7 +141,7 @@ module sparse_ir
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
-        res = matmul(obj%uhat_f%a, transpose(arr))
+        res = matmul(arr, transpose(obj%uhat_f%a))
     end
 
     subroutine evaluate_matsubara_b(obj, arr, res)
@@ -149,7 +149,7 @@ module sparse_ir
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
-        res = matmul(obj%uhat_b%a, transpose(arr))
+        res = matmul(arr, transpose(obj%uhat_b%a))
     end
 
     ! Implementation of fit
@@ -172,7 +172,7 @@ module sparse_ir
         ns = mat%ns
         m = mat%m
         n = mat%n
-        allocate(ut_arr(nb, ns))
+        allocate(ut_arr(ns, nb))
 
         if (size(res, 1) /= nb .or. size(res, 2) /= n) then
             stop 'Invalid size of output array'

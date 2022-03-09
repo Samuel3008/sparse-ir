@@ -1,10 +1,13 @@
 program main
     use sparse_ir
     use sparse_ir_io
+    use sparse_ir_preset
     implicit none
 
-    call test_fermion()
-    call test_boson()
+    call test_fermion(.true.)
+    call test_boson(.true.)
+    call test_fermion(.false.)
+    call test_boson(.false.)
     call test_fit()
     call test_fit_rectangular()
 
@@ -53,10 +56,11 @@ program main
     end
 
     ! fermion
-    subroutine test_fermion()
+    subroutine test_fermion(preset)
+        logical, intent(in) :: preset
         type(IR) :: ir_obj
-        double precision, parameter :: lambda = 1d+4
-        integer, parameter :: ndigit = 10
+        integer, parameter :: ndigit = 10, nlambda = 4
+        double precision, parameter :: lambda = 10.d0 ** nlambda
         double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
 
         double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
@@ -66,9 +70,13 @@ program main
             gtau_reconst(:, :), giv_reconst(:, :)
         integer n, t
 
-        open(99, file='ir_nlambda4_ndigit10.dat', status='old')
-        ir_obj = read_ir(99, beta)
-        close(99)
+        if (preset) then
+            ir_obj = mk_ir_preset(nlambda, ndigit, beta)
+        else
+            open(99, file='ir_nlambda4_ndigit10.dat', status='old')
+            ir_obj = read_ir(99, beta)
+            close(99)
+        end if
 
         if (abs(ir_obj%beta - beta) > 1d-10) then
             stop "beta does not match"
@@ -120,10 +128,11 @@ program main
 
 
     ! boson
-    subroutine test_boson()
+    subroutine test_boson(preset)
+        logical, intent(in) :: preset
         type(IR) :: ir_obj
-        double precision, parameter :: lambda = 1d+4
-        integer, parameter :: ndigit = 10
+        integer, parameter :: ndigit = 10, nlambda = 4
+        double precision, parameter :: lambda = 10.d0 ** nlambda
         double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
 
         double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
@@ -133,9 +142,13 @@ program main
             gtau_reconst(:, :), giv_reconst(:, :)
         integer n, t
 
-        open(99, file='ir_nlambda4_ndigit10.dat', status='old')
-        ir_obj = read_ir(99, beta)
-        close(99)
+        if (preset) then
+            ir_obj = mk_ir_preset(nlambda, ndigit, beta)
+        else
+            open(99, file='ir_nlambda4_ndigit10.dat', status='old')
+            ir_obj = read_ir(99, beta)
+            close(99)
+        end if
 
         if (abs(ir_obj%beta - beta) > 1d-10) then
             stop "beta does not match"
