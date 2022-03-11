@@ -1,6 +1,11 @@
 import sparse_ir
 import numpy as np
 
+# max line continuation is 255 for Fortran >= 2003,
+# 39 for Fortran95.
+# For safety, we stick to Fortran95.
+MAX_CONTINUATION_LINE = 39
+NLINE = MAX_CONTINUATION_LINE - 2
 
 class BasisInfo:
     def __init__(self, nlambda: int, ndigit: int) -> None:
@@ -199,15 +204,21 @@ f"""
     print_vector_data((b.uhat_f.real + b.uhat_f.imag)[0:b.nfreq_f_reduced,:], f"uhat_f_r_{sig}")
     print_vector_data((b.uhat_b.real + b.uhat_b.imag)[0:b.nfreq_b_reduced,:], f"uhat_b_r_{sig}")
 
+def _array_to_strings(arr, num_elem_str = 3):
+    """ Convert array of float or int to a list of strings """
+    start = 0
+    res = []
+    while start < arr.size:
+        end = min(start + num_elem_str, arr.size)
+        res.append(", ".join(map(_str, arr[start:end])))
+        start = end
+    return res
+
 
 def print_vector_data(vec, var_name):
     """ Print initializer of array data """
     vec = np.asfortranarray(vec)
     vec = vec.T.ravel()
-    # max line continuation is 255 for Fortran >= 2003,
-    # 39 for Fortran95.
-    # For safety, we stick to Fortran95.
-    nline = 37
     print(
 f"""
     subroutine init_{var_name}()
@@ -215,11 +226,11 @@ f"""
     )
     start = 0
     while start < vec.size:
-        end = min(start + nline, vec.size)
+        end = min(start + NLINE, vec.size)
         sub_vec = vec[start:end]
         print(2*4*" ", f"{var_name}({start+1}:{end}) = (/ &")
         end_str = "&"
-        print(", &\n".join(map(_str, sub_vec)) + end_str)
+        print(", &\n".join(_array_to_strings(sub_vec)) + end_str)
         print(2*4*" " + "/)")
         start = end
 
