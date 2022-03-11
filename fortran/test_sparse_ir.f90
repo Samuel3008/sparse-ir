@@ -34,7 +34,7 @@ program main
         end if
         !write(*, *) y
         !write(*, *) y_reconst
-    end
+    end subroutine
 
     subroutine test_fit_rectangular()
         integer, parameter :: n=1, m=2
@@ -53,18 +53,18 @@ program main
         if (maxval(abs(y - y_reconst)) > 1e-12) then
             stop "y and y_reconst do not match!"
         end if
-    end
+    end subroutine
 
     ! fermion
     subroutine test_fermion(preset)
         logical, intent(in) :: preset
         type(IR) :: ir_obj
         integer, parameter :: ndigit = 10, nlambda = 4
-        double precision, parameter :: lambda = 10.d0 ** nlambda
+        double precision, parameter :: lambda = 1.d1 ** nlambda
         double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
 
-        double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
-        double precision, parameter :: eps = 1.d0/10.d0**ndigit
+        double precision, parameter :: beta = lambda/wmax, omega0 = 1.d0/beta
+        double precision, parameter :: eps = 1.d-1**ndigit
 
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
             gtau_reconst(:, :), giv_reconst(:, :)
@@ -98,7 +98,7 @@ program main
 
         ! From Matsubara
         do n = 1, ir_obj%nfreq_f
-            giv(1, n) = 1/(dcmplx(0d0, PI*ir_obj%freq_f(n)/beta) - omega0)
+            giv(1, n) = 1.d0/(cmplx(0d0, PI*ir_obj%freq_f(n)/beta, kind(0d0)) - omega0)
         end do
         call fit_matsubara_f(ir_obj, giv, gl_matsu)
 
@@ -109,22 +109,22 @@ program main
         end do
         call fit_tau(ir_obj, gtau, gl_tau)
 
-        if (maxval(abs(gl_matsu - gl_tau)) > 100*eps) then
+        if (maxval(abs(gl_matsu - gl_tau)) > 1d2*eps) then
             stop "gl_matsu and gl_tau do not match!"
         end if
 
         call evaluate_matsubara_f(ir_obj, gl_matsu, giv_reconst)
-        if (maxval(abs(giv - giv_reconst)) > 100*eps) then
+        if (maxval(abs(giv - giv_reconst)) > 1d2*eps) then
             stop "giv do not match!"
         end if
 
         call evaluate_tau(ir_obj, gl_tau, gtau_reconst)
-        if (maxval(abs(gtau - gtau_reconst)) > 100*eps) then
+        if (maxval(abs(gtau - gtau_reconst)) > 1d2*eps) then
             stop "gtau do not match!"
         end if
 
         deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau, gtau_reconst, giv_reconst)
-    end
+    end subroutine
 
 
     ! boson
@@ -132,11 +132,11 @@ program main
         logical, intent(in) :: preset
         type(IR) :: ir_obj
         integer, parameter :: ndigit = 10, nlambda = 4
-        double precision, parameter :: lambda = 10.d0 ** nlambda
+        double precision, parameter :: lambda = 1.d1 ** nlambda
         double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
 
-        double precision, parameter :: beta = lambda/wmax, omega0 = 1/beta
-        double precision, parameter :: eps = 1.d0/10.d0**ndigit
+        double precision, parameter :: beta = lambda/wmax, omega0 = 1.d0/beta
+        double precision, parameter :: eps = 1.d-1**ndigit
 
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
             gtau_reconst(:, :), giv_reconst(:, :)
@@ -170,7 +170,7 @@ program main
 
         ! From Matsubara
         do n = 1, ir_obj%nfreq_b
-            giv(1, n) = 1/(dcmplx(0d0, PI*ir_obj%freq_b(n)/beta) - omega0)
+            giv(1, n) = 1.d0/(cmplx(0d0, PI*ir_obj%freq_b(n)/beta, kind(0d0)) - omega0)
         end do
         call fit_matsubara_b(ir_obj, giv, gl_matsu)
 
@@ -185,21 +185,21 @@ program main
             !write(*, *) l, real(gl_tau(1, l)), real(gl_matsu(1, l))
         !end do
 
-        if (maxval(abs(gl_matsu - gl_tau)) > 100*eps) then
+        if (maxval(abs(gl_matsu - gl_tau)) > 1d2*eps) then
             stop "gl_matsu and gl_tau do not match!"
         end if
 
         call evaluate_matsubara_b(ir_obj, gl_matsu, giv_reconst)
-        if (maxval(abs(giv - giv_reconst)) > 100*eps) then
+        if (maxval(abs(giv - giv_reconst)) > 1d2*eps) then
             stop "gtau do not match!"
         end if
 
         call evaluate_tau(ir_obj, gl_tau, gtau_reconst)
-        if (maxval(abs(gtau - gtau_reconst)) > 100*eps) then
+        if (maxval(abs(gtau - gtau_reconst)) > 1d2*eps) then
             stop "gtau do not match!"
         end if
 
         deallocate(giv, gtau, gl_ref, gl_matsu, gl_tau, gtau_reconst, giv_reconst)
-    end
+    end subroutine
 
 end program

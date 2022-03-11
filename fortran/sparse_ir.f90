@@ -50,7 +50,7 @@ module sparse_ir
         obj%u = decompose(sqrt(2/beta)*u, eps_svd)
         obj%uhat_f = decompose(sqrt(beta) * uhat_f, eps_svd)
         obj%uhat_b = decompose(sqrt(beta) * uhat_b, eps_svd)
-    end
+    end subroutine
 
     ! SVD of matrix a. Singular values smaller than esp * the largest one are dropped.
     function decompose(a, eps) result(dmat)
@@ -112,21 +112,21 @@ module sparse_ir
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         call fit_impl(arr, obj%uhat_f, res)
-    end
+    end subroutine
 
     subroutine fit_matsubara_b(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         call fit_impl(arr, obj%uhat_b, res)
-    end
+    end subroutine
 
     subroutine fit_tau(obj, arr, res)
         type(IR), intent(in) :: obj
         complex(kind(0d0)), intent (in) :: arr(:, :)
         complex(kind(0d0)), intent(out) :: res(:, :)
         call fit_impl(arr, obj%u, res)
-    end
+    end subroutine
 
     subroutine evaluate_tau(obj, arr, res)
         type(IR), intent(in) :: obj
@@ -134,7 +134,7 @@ module sparse_ir
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
         res = matmul(arr, transpose(obj%u%a))
-    end
+    end subroutine
 
     subroutine evaluate_matsubara_f(obj, arr, res)
         type(IR), intent(in) :: obj
@@ -142,7 +142,7 @@ module sparse_ir
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
         res = matmul(arr, transpose(obj%uhat_f%a))
-    end
+    end subroutine
 
     subroutine evaluate_matsubara_b(obj, arr, res)
         type(IR), intent(in) :: obj
@@ -150,7 +150,7 @@ module sparse_ir
         complex(kind(0d0)), intent(out) :: res(:, :)
         ! TODO: using zgemm
         res = matmul(arr, transpose(obj%uhat_b%a))
-    end
+    end subroutine
 
     ! Implementation of fit
     subroutine fit_impl(arr, mat, res)
@@ -192,7 +192,7 @@ module sparse_ir
         call zgemm("t", "t", nb, n, ns, 1.d0, ut_arr, ns, mat%v, n, 0.d0, res, nb)
 
         deallocate(ut_arr)
-    end
+    end subroutine
 
 
 end module

@@ -20,7 +20,7 @@ module sparse_ir_io
             write(*, *) "Invalid version number", version
             stop "Stopping..."
         end if
-    end
+    end function
 
 
     ! Read sampling points, basis functions (version 1)
@@ -84,7 +84,7 @@ module sparse_ir_io
         do l = 1, size
             do n = 1, nfreq_f
                 read(unit, *) rtmp, rtmp2
-                uhat_f(n, l) = dcmplx(rtmp, rtmp2)
+                uhat_f(n, l) = cmplx(rtmp, rtmp2, kind(0d0))
             end do
         end do
 
@@ -101,11 +101,11 @@ module sparse_ir_io
         do l = 1, size
             do n = 1, nfreq_b
                 read(unit, *) rtmp, rtmp2
-                uhat_b(n, l) = dcmplx(rtmp, rtmp2)
+                uhat_b(n, l) = cmplx(rtmp, rtmp2, kind(0d0))
             end do
         end do
 
         call init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, 1d-20)
-    end
+    end function
 
 end module
