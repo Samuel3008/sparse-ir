@@ -3,9 +3,9 @@ module sparse_ir
 
     ! Matrix decomposed in SVD for fitting
     type DecomposedMatrix
-        complex(kind(0d0)), allocatable :: a(:, :) ! Original matrix
-        double precision, allocatable :: inv_s(:) ! Inverse of singular values
-        complex(kind(0d0)), allocatable :: ut(:, :), v(:, :)
+        complex(kind(0d0)), pointer :: a(:, :) ! Original matrix
+        double precision, pointer :: inv_s(:) ! Inverse of singular values
+        complex(kind(0d0)), pointer :: ut(:, :), v(:, :)
         integer :: m, n, ns
     end type
 
@@ -13,8 +13,8 @@ module sparse_ir
     type IR
         integer :: size, ntau, nfreq_f, nfreq_b
         double precision :: beta, wmax, eps
-        double precision, allocatable :: s(:), tau(:)
-        integer, allocatable :: freq_f(:), freq_b(:)
+        double precision, pointer :: s(:), tau(:)
+        integer, pointer :: freq_f(:), freq_b(:)
         type(DecomposedMatrix) :: u
         type(DecomposedMatrix) :: uhat_f, uhat_b
     end type

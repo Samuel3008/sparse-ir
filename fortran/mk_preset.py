@@ -33,15 +33,20 @@ class BasisInfo:
         self.nfreq_b_reduced = self.nfreq_b //2 + 1
 
 
-def _to_str(shape):
-    return ",".join(map(str, shape))
+def _str(value):
+    if isinstance(value, float):
+        return f"{value:.16e}".replace('e', 'd')
+    elif type(value) in [int, np.int64]:
+        return str(value)
+    else:
+        raise RuntimeError("Invalid type: " + str(type(value)))
 
 
 def run():
-    #nlambda_list  = [1, 2, 3, 4, 5]
-    #ndigit_list  = [10]
-    nlambda_list  = [4]
+    nlambda_list  = [1, 2, 3, 4, 5]
     ndigit_list  = [10]
+    #nlambda_list  = [1]
+    #ndigit_list  = [1]
 
     bases = {}
 
@@ -97,7 +102,7 @@ f"""\
     print(
 """\
         stop "Invalid parameters"
-    end
+    end function
 """
             )
 
@@ -124,7 +129,7 @@ f"""
         integer :: itau, l, ifreq
 """)
     for varname in ["s", "tau", "freq_f", "freq_b", "u_r", "uhat_f_r", "uhat_b_r"]:
-        print(8*" ", f"call init_{varname}_{sig}()")
+        print(8*" " + f"call init_{varname}_{sig}()")
 
     print(
 f"""
@@ -180,50 +185,44 @@ f"""
             u, uhat_f, uhat_b, 1d-20)
 
         deallocate(u, uhat_f, uhat_b)
-    end
+    end function
 """
     )
 
-    print_real_data(b.s, f"s_{sig}")
-    print_real_data(b.tau, f"tau_{sig}")
-    print_int_data(b.freq_f, f"freq_f_{sig}")
-    print_int_data(b.freq_b, f"freq_b_{sig}")
+    print_vector_data(b.s, f"s_{sig}")
+    print_vector_data(b.tau, f"tau_{sig}")
+    print_vector_data(b.freq_f, f"freq_f_{sig}")
+    print_vector_data(b.freq_b, f"freq_b_{sig}")
 
     ntau_reduced = b.ntau_reduced
-    print_real_data(b.u[0:ntau_reduced,:], f"u_r_{sig}")
-    print_real_data((b.uhat_f.real + b.uhat_f.imag)[0:b.nfreq_f_reduced,:], f"uhat_f_r_{sig}")
-    print_real_data((b.uhat_b.real + b.uhat_b.imag)[0:b.nfreq_b_reduced,:], f"uhat_b_r_{sig}")
+    print_vector_data(b.u[0:ntau_reduced,:], f"u_r_{sig}")
+    print_vector_data((b.uhat_f.real + b.uhat_f.imag)[0:b.nfreq_f_reduced,:], f"uhat_f_r_{sig}")
+    print_vector_data((b.uhat_b.real + b.uhat_b.imag)[0:b.nfreq_b_reduced,:], f"uhat_b_r_{sig}")
 
 
-def print_real_data(vec, var_name):
-    """ Print array data generator"""
-    vec = vec.T.ravel()
-    n = vec.size
-    print(
-f"""
-    subroutine init_{var_name}()
-"""
-    )
-    for i in range(n):
-        print(8*" " + f"{var_name}({i+1}) = " + f"{vec[i]:.16e}".replace('e', 'd'))
-    print(
-f"""
-    end subroutine
-"""
-    )
-
-def print_int_data(vec, var_name):
-    """ Print array data generator"""
+def print_vector_data(vec, var_name):
+    """ Print initializer of array data """
     vec = np.asfortranarray(vec)
     vec = vec.T.ravel()
-    n = vec.size
+    # max line continuation is 255 for Fortran >= 2003,
+    # 39 for Fortran95.
+    # For safety, we stick to Fortran95.
+    nline = 37
     print(
 f"""
     subroutine init_{var_name}()
 """
     )
-    for i in range(n):
-        print(8*" " + f"{var_name}({i+1}) = {vec[i]}")
+    start = 0
+    while start < vec.size:
+        end = min(start + nline, vec.size)
+        sub_vec = vec[start:end]
+        print(2*4*" ", f"{var_name}({start+1}:{end}) = (/ &")
+        end_str = "&"
+        print(", &\n".join(map(_str, sub_vec)) + end_str)
+        print(2*4*" " + "/)")
+        start = end
+
     print(
 f"""
     end subroutine

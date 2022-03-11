@@ -61,14 +61,17 @@ program main
         type(IR) :: ir_obj
         integer, parameter :: ndigit = 10, nlambda = 4
         double precision, parameter :: lambda = 1.d1 ** nlambda
-        double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
+        double precision, parameter :: wmax = 1.d0
+        double precision :: PI
 
         double precision, parameter :: beta = lambda/wmax, omega0 = 1.d0/beta
         double precision, parameter :: eps = 1.d-1**ndigit
 
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
             gtau_reconst(:, :), giv_reconst(:, :)
-        integer n, t, l
+        integer n, t
+
+        PI =4.D0*DATAN(1.D0)
 
         if (preset) then
             ir_obj = mk_ir_preset(nlambda, ndigit, beta)
@@ -136,7 +139,8 @@ program main
         type(IR) :: ir_obj
         integer, parameter :: ndigit = 10, nlambda = 4
         double precision, parameter :: lambda = 1.d1 ** nlambda
-        double precision, parameter :: wmax = 1.d0, PI=4.D0*DATAN(1.D0)
+        double precision, parameter :: wmax = 1.d0
+        double precision :: PI
 
         double precision, parameter :: beta = lambda/wmax, omega0 = 1.d0/beta
         double precision, parameter :: eps = 1.d-1**ndigit
@@ -144,6 +148,8 @@ program main
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
             gtau_reconst(:, :), giv_reconst(:, :)
         integer n, t
+
+        PI=4.D0*DATAN(1.D0)
 
         if (preset) then
             ir_obj = mk_ir_preset(nlambda, ndigit, beta)
