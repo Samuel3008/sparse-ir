@@ -109,9 +109,9 @@ program main
         end do
         call fit_tau(ir_obj, gtau, gl_tau)
 
-        do l = 1, ir_obj%size
-            write(*,*) real(gl_matsu(1,l)), real(gl_tau(1,l))
-        end do
+        !do l = 1, ir_obj%size
+            !write(*,*) real(gl_matsu(1,l)), real(gl_tau(1,l))
+        !end do
         if (maxval(abs(gl_matsu - gl_tau)) > 1d2*eps) then
             stop "gl_matsu and gl_tau do not match!"
         end if

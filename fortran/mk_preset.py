@@ -135,20 +135,20 @@ f"""
         ! Use the fact U_l(tau) is even/odd for even/odd l-1.
         do l = 1, size
             do itau = 1, ntau_reduced
-                u(itau, l) = u_r_{sig}(itau + {size}*(l-1))
-                u(ntau-itau+1, l) = (-1)**(l-1) * u_r_{sig}(itau + {size}*(l-1))
+                u(itau, l) = u_r_{sig}(itau + {b.ntau_reduced}*(l-1))
+                u(ntau-itau+1, l) = (-1)**(l-1) * u_r_{sig}(itau + {b.ntau_reduced}*(l-1))
             end do
         end do
 
         ! Use the fact U^F_l(iv) is pure imaginary/real for even/odd l-1.
         do l = 1, size, 2
             do ifreq = 1, nfreq_f_reduced
-                uhat_f(ifreq, l) = cmplx(0.0, uhat_f_r_{sig}(ifreq + {size}*(l-1)), kind(0d0))
+                uhat_f(ifreq, l) = cmplx(0.0, uhat_f_r_{sig}(ifreq + {b.nfreq_f_reduced}*(l-1)), kind(0d0))
             end do
         end do
         do l = 2, size, 2
             do ifreq = 1, nfreq_f_reduced
-                uhat_f(ifreq, l) = cmplx(uhat_f_r_{sig}(ifreq + {size}*(l-1)), 0.0, kind(0d0))
+                uhat_f(ifreq, l) = cmplx(uhat_f_r_{sig}(ifreq + {b.nfreq_f_reduced}*(l-1)), 0.0, kind(0d0))
             end do
         end do
         do l = 1, size
@@ -160,12 +160,12 @@ f"""
         ! Use the fact U^B_l(iv) is pure real/imaginary for even/odd l-1
         do l = 1, size, 2
             do ifreq = 1, nfreq_b_reduced
-                uhat_b(ifreq, l) = cmplx(uhat_b_r_{sig}(ifreq + {size}*(l-1)), 0.0d0, kind(0d0))
+                uhat_b(ifreq, l) = cmplx(uhat_b_r_{sig}(ifreq + {b.nfreq_b_reduced}*(l-1)), 0.0d0, kind(0d0))
             end do
         end do
         do l = 2, size, 2
             do ifreq = 1, nfreq_b_reduced
-                uhat_b(ifreq, l) = cmplx(0.0d0, uhat_b_r_{sig}(ifreq + {size}*(l-1)), kind(0d0))
+                uhat_b(ifreq, l) = cmplx(0.0d0, uhat_b_r_{sig}(ifreq + {b.nfreq_b_reduced}*(l-1)), kind(0d0))
             end do
         end do
         do l = 1, size
@@ -197,7 +197,7 @@ f"""
 
 def print_real_data(vec, var_name):
     """ Print array data generator"""
-    vec = vec.ravel()
+    vec = vec.T.ravel()
     n = vec.size
     print(
 f"""
@@ -214,7 +214,8 @@ f"""
 
 def print_int_data(vec, var_name):
     """ Print array data generator"""
-    vec = vec.ravel()
+    vec = np.asfortranarray(vec)
+    vec = vec.T.ravel()
     n = vec.size
     print(
 f"""
