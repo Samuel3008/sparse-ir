@@ -18,7 +18,7 @@ f"""
     )
     for j in range(100):
         end = ", &\n" if j != 100-1 else ""
-        print(12 * " " + "1.d0", end=end)
+        print(12 * " " + str(i*0.1223+j) + "d0", end=end)
     print("/)")
 print("    end subroutine")
 print("end")
