@@ -12,7 +12,7 @@ LDFLAGS = -L/opt/homebrew/Cellar/openblas/0.3.20/lib
 .SUFFIXES: .f90
 
 %.o: %.f90
-	$(COMPILE.f) $(OUTPUT_OPTION) $< -std=f95 -Wall -fbounds-check -g
+	$(COMPILE.f) $(OUTPUT_OPTION) $< -std=f95 -Wall -fbounds-check -g -fcheck=array-temps,bounds,do,mem,pointer,recursion
 	#$(COMPILE.f) $(OUTPUT_OPTION) $< -fbounds-check
 	#$(COMPILE.f) $(OUTPUT_OPTION) $< -g
 	#$(COMPILE.f) $(OUTPUT_OPTION) $< -O2 -g -traceback

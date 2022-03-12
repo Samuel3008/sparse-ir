@@ -16,26 +16,28 @@ class BasisInfo:
 
         self.basis_f = sparse_ir.IRBasis("F", lambda_, eps, kernel=kernel, sve_result=sve_result)
         self.basis_b = sparse_ir.IRBasis("B", lambda_, eps, kernel=kernel, sve_result=sve_result)
-        self.smpl_tau = sparse_ir.TauSampling(self.basis_f)
-        self.smpl_matsu_f = sparse_ir.MatsubaraSampling(self.basis_f)
-        self.smpl_matsu_b = sparse_ir.MatsubaraSampling(self.basis_b)
-
         self.s = self.basis_f.s
         self.size = self.s.size
-        self.tau = self.smpl_tau.sampling_points
-        self.freq_f = self.smpl_matsu_f.sampling_points
-        self.freq_b = self.smpl_matsu_b.sampling_points
-        self.u = self.smpl_tau.matrix.a
-        self.uhat_f = self.smpl_matsu_f.matrix.a
-        self.uhat_b = self.smpl_matsu_b.matrix.a
 
+        # Sampling points:
+        #   Add tau = 0, beta to sampling points (for Matsubara summation)
+        self.tau = np.hstack([-1, self.basis_f.default_tau_sampling_points(), 1])
+        self.freq_f = self.basis_f.default_matsubara_sampling_points()
+        self.freq_b = self.basis_b.default_matsubara_sampling_points()
         self.ntau = self.tau.size
         self.nfreq_f = self.freq_f.size
         self.nfreq_b = self.freq_b.size
-
         self.ntau_reduced = self.ntau //2 + 1
         self.nfreq_f_reduced = self.nfreq_f //2 + 1
         self.nfreq_b_reduced = self.nfreq_b //2 + 1
+
+        # Transformation matrix
+        self.smpl_tau = sparse_ir.TauSampling(self.basis_f, sampling_points=self.tau)
+        self.smpl_matsu_f = sparse_ir.MatsubaraSampling(self.basis_f, sampling_points=self.freq_f)
+        self.smpl_matsu_b = sparse_ir.MatsubaraSampling(self.basis_b, sampling_points=self.freq_b)
+        self.u = self.smpl_tau.matrix.a
+        self.uhat_f = self.smpl_matsu_f.matrix.a
+        self.uhat_b = self.smpl_matsu_b.matrix.a
 
 
 def _str(value):
@@ -48,7 +50,8 @@ def _str(value):
 
 
 def run():
-    nlambda_list  = [1, 2, 3, 4, 5]
+    #nlambda_list  = [1, 2, 3, 4, 5]
+    nlambda_list  = [4, 5]
     ndigit_list  = [10]
     #nlambda_list  = [1]
     #ndigit_list  = [1]

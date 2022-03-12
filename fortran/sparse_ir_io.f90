@@ -105,7 +105,7 @@ module sparse_ir_io
             end do
         end do
 
-        call init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, 1d-20)
+        call init_ir(obj, beta, lambda, eps, s, tau, freq_f, freq_b, u, uhat_f, uhat_b, 1d-16)
     end function
 
 end module

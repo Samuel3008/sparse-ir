@@ -4,12 +4,13 @@ program main
     use sparse_ir_preset
     implicit none
 
-    call test_fermion(.true.)
-    call test_boson(.true.)
-    call test_fermion(.false.)
-    call test_boson(.false.)
     call test_fit()
-    call test_fit_rectangular()
+    call test_under_fitting()
+    call test_over_fitting()
+    call test_fermion(.true.)
+    !call test_boson(.true.)
+    !call test_fermion(.false.)
+    !call test_boson(.false.)
 
     contains
 
@@ -36,7 +37,7 @@ program main
         !write(*, *) y_reconst
     end subroutine
 
-    subroutine test_fit_rectangular()
+    subroutine test_over_fitting()
         integer, parameter :: n=1, m=2
         complex(kind(0d0)) :: a(n, m), y(1, n), x(1, m), y_reconst(1, n)
         type(DecomposedMatrix) :: dm
@@ -55,6 +56,33 @@ program main
         end if
     end subroutine
 
+
+    subroutine test_under_fitting()
+        integer, parameter :: n=2, m=1
+        complex(kind(0d0)) :: a(n, m), y(1, n), x(1, m), y_reconst(1, n)
+        type(DecomposedMatrix) :: dm
+        a(1, 1) = 1.2d0
+        a(2, 1) = 1.d0
+
+        dm = decompose(a, 1d-10)
+
+        y(1, 1) = 1.2d0
+        y(1, 2) = 1.0d0
+
+        call fit_impl(y, dm, x)
+        !write(*,*) "inv_s: ", dm%inv_s
+        !write(*,*) "x: ", x
+
+        ! transpose(x): (m, 1)
+        ! matmul(dm%a, transpose(x)): (n, m) * (m, 1) = (n, 1)
+        y_reconst = transpose(matmul(dm%a, transpose(x)))
+        !write(*,*) "y: ", y_reconst
+        if (maxval(abs(y - y_reconst)) > 1e-12) then
+            stop "y and y_reconst do not match!"
+        end if
+    end subroutine
+
+
     ! fermion
     subroutine test_fermion(preset)
         logical, intent(in) :: preset
@@ -69,7 +97,7 @@ program main
 
         complex(kind(0d0)),allocatable :: giv(:,:), gl_ref(:, :), gl_matsu(:, :), gl_tau(:, :), gtau(:, :), &
             gtau_reconst(:, :), giv_reconst(:, :)
-        integer n, t
+        integer n, t, l
 
         PI =4.D0*DATAN(1.D0)
 
