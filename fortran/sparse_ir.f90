@@ -57,7 +57,7 @@ module sparse_ir
         complex(kind(0d0)), intent(in) :: a(:, :)
         double precision, intent(in) :: eps
 
-        integer :: i, info, lda, ldu, ldvt, lwork, m, n, mn, mx, ns
+        integer :: i, info, lda, ldu, ldvt, lwork, m, n, mn, ns
         complex(kind(0d0)), allocatable :: a_copy(:, :), u(:, :), &
             vt(:, :), work(:)
         double precision, allocatable :: rwork(:), s(:)
@@ -66,7 +66,6 @@ module sparse_ir
 
         m = size(a, 1)
         n = size(a, 2)
-        mx = max(m, n)
         mn = min(m, n)
         lda = m
         ldu = m
